@@ -7,7 +7,7 @@ export const MOCK_PROMPTS: Prompt[] = [
     title: 'Prompt4',
     author: 'Admin Kartik',
     category: 'Men',
-    likes: 1,
+    likes: 0,
     image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=800&auto=format&fit=crop',
   },
   {
@@ -34,7 +34,7 @@ export const MOCK_PROMPTS: Prompt[] = [
     title: 'Cyberpunk City',
     author: 'Neo User',
     category: 'Landscape',
-    likes: 24,
+    likes: 0,
     image: 'https://images.unsplash.com/photo-1515630278258-407f66498911?q=80&w=800&auto=format&fit=crop',
   },
   {
@@ -43,7 +43,7 @@ export const MOCK_PROMPTS: Prompt[] = [
     title: 'Cute Puppy',
     author: 'DogLover',
     category: 'Animals',
-    likes: 156,
+    likes: 0,
     image: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?q=80&w=800&auto=format&fit=crop',
   },
   {
@@ -52,7 +52,7 @@ export const MOCK_PROMPTS: Prompt[] = [
     title: 'Sunset Vibes',
     author: 'NatureFan',
     category: 'Landscape',
-    likes: 42,
+    likes: 0,
     image: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?q=80&w=800&auto=format&fit=crop',
   }
 ];

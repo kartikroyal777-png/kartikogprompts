@@ -43,7 +43,7 @@ const PromptDetail = () => {
       if (error) throw error;
 
       const imagePath = p.images?.[0]?.storage_path;
-      let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x400?text=No+Image';
+      let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x400?text=No+Image';
       
       if (imagePath) {
          if (imagePath.startsWith('http')) {
@@ -122,7 +122,7 @@ const PromptDetail = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 pb-24 transition-colors duration-300">
       {/* Back Button */}
-      <div className="max-w-7xl mx-auto px-4 pt-6">
+      <div className="max-w-7xl mx-auto px-4 pt-28">
         <button 
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 transition-colors font-medium"

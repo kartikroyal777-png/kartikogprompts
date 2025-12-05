@@ -3,7 +3,7 @@ import { Terminal, ArrowRight, Image as ImageIcon, Cpu } from 'lucide-react';
 
 const Instructions = () => {
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 py-12 px-4 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-950 py-12 px-4 pt-28 pb-12 transition-colors duration-300">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">How to Generate 4K Images Free</h1>
         <p className="text-xl text-slate-500 dark:text-slate-400 mb-12">

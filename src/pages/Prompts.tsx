@@ -39,7 +39,7 @@ const Prompts = () => {
 
       // Transform data to match Prompt interface
       const formattedPrompts: Prompt[] = (data || []).map((p: any) => {
-         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
          const storagePath = p.images?.[0]?.storage_path;
          
          if (storagePath) {
@@ -80,7 +80,7 @@ const Prompts = () => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-8">
         
         {/* Search Section */}
         <div className="max-w-2xl mx-auto mb-8">

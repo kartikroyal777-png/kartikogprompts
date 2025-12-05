@@ -2,7 +2,7 @@ import React from 'react';
 import { Users, BookOpen, ShieldAlert, Mail, CheckCircle, Sparkles, Heart, Info } from 'lucide-react';
 
 const LegalLayout = ({ title, children }: { title: string, children: React.ReactNode }) => (
-  <div className="min-h-screen bg-white dark:bg-slate-950 py-12 px-4 transition-colors duration-300">
+  <div className="min-h-screen bg-white dark:bg-slate-950 py-12 px-4 pt-24 pb-12 transition-colors duration-300">
     <div className="max-w-3xl mx-auto prose dark:prose-invert">
       <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-8">{title}</h1>
       <div className="text-slate-600 dark:text-slate-400 space-y-6">
@@ -13,7 +13,7 @@ const LegalLayout = ({ title, children }: { title: string, children: React.React
 );
 
 export const About = () => (
-  <div className="min-h-screen bg-white dark:bg-slate-950 py-16 px-4 transition-colors duration-300">
+  <div className="min-h-screen bg-white dark:bg-slate-950 py-16 px-4 pt-28 pb-16 transition-colors duration-300">
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="text-center mb-16">

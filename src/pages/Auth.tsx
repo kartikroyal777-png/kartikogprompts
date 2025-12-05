@@ -46,7 +46,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-gray-50 px-4 pt-24 pb-12">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-lg">
         <div className="text-center">
           <Sparkles className="mx-auto h-12 w-12 text-sky-500" />

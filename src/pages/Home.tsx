@@ -33,7 +33,7 @@ export default function Home() {
       
       // Format prompts to handle images correctly
       const formattedPrompts = (data || []).map((p: any) => {
-         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
          const storagePath = p.images?.[0]?.storage_path;
          
          if (storagePath) {
@@ -76,20 +76,20 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
-        {/* Gradient Check Background */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+        {/* Gradient Check Background - Expanded mask to spread further down */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:linear-gradient(to_bottom,#000_60%,transparent_100%)]"></div>
         
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 sm:pt-24 sm:pb-20">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 sm:pt-32 sm:pb-32">
           <div className="text-center space-y-8 max-w-3xl mx-auto">
             <div className="flex justify-center">
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300 ring-1 ring-inset ring-sky-600/20">
                 <Sparkles className="w-4 h-4 mr-2" />
-                Free, Open-Source AI Prompts
+                The #1 AI Prompt Library
               </span>
             </div>
             
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-tight">
-              Copy. Paste. <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-blue-600">Create.</span>
+              Free, Open-Source <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-blue-600">AI Prompts</span>
             </h1>
             
             <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto font-normal leading-relaxed">
@@ -117,13 +117,13 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
               <Link
                 to="/prompts"
-                className="inline-flex justify-center items-center px-8 py-3.5 rounded-full text-white bg-sky-500 hover:bg-sky-600 font-bold transition-all shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 hover:-translate-y-0.5"
+                className="inline-flex justify-center items-center px-8 py-3.5 rounded-full text-white bg-sky-500 hover:bg-sky-600 font-bold transition-all shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 hover:scale-105 active:scale-95 duration-300"
               >
                 Browse All Prompts
               </Link>
               <Link
                 to="/upload"
-                className="inline-flex justify-center items-center px-8 py-3.5 rounded-full text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 font-bold transition-all hover:-translate-y-0.5 shadow-sm"
+                className="inline-flex justify-center items-center px-8 py-3.5 rounded-full text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 font-bold transition-all shadow-sm hover:scale-105 active:scale-95 duration-300"
               >
                 Upload Prompt
               </Link>
@@ -144,7 +144,7 @@ export default function Home() {
           </div>
           <Link 
             to="/prompts" 
-            className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-5 py-2.5 bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 font-semibold rounded-full hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-colors"
+            className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-5 py-2.5 bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 font-semibold rounded-full hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-all hover:scale-105 active:scale-95"
           >
             View All Prompts
             <ArrowRight className="w-4 h-4" />
@@ -197,7 +197,7 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row gap-4 pt-2">
                   <Link
                     to="/ebook"
-                    className="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold shadow-lg shadow-sky-900/20 transition-all hover:-translate-y-0.5"
+                    className="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold shadow-lg shadow-sky-900/20 transition-all hover:-translate-y-0.5 hover:scale-105 active:scale-95"
                   >
                     <BookOpen className="w-5 h-5 mr-2" />
                     Get eBook (₹200)
@@ -206,7 +206,7 @@ export default function Home() {
                     href="https://www.instagram.com/kartik.ogprompts/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium backdrop-blur-sm transition-all border border-white/10"
+                    className="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium backdrop-blur-sm transition-all border border-white/10 hover:scale-105 active:scale-95"
                   >
                     DM for Discount
                   </a>

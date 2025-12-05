@@ -43,7 +43,7 @@ const PromptDetail = () => {
       if (error) throw error;
 
       const imagePath = p.images?.[0]?.storage_path;
-      let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x400?text=No+Image';
+      let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x400?text=No+Image';
       
       if (imagePath) {
          if (imagePath.startsWith('http')) {

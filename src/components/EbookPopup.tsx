@@ -7,8 +7,8 @@ export default function EbookPopup() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Check if user has seen the popup
-    const hasSeenPopup = localStorage.getItem('hasSeenEbookPopup');
+    // Check if user has seen the popup (Updated key to force reset for testing)
+    const hasSeenPopup = localStorage.getItem('hasSeenEbookPopup_v2');
     
     if (!hasSeenPopup) {
       // Show popup after a short delay
@@ -21,7 +21,7 @@ export default function EbookPopup() {
 
   const handleClose = () => {
     setIsVisible(false);
-    localStorage.setItem('hasSeenEbookPopup', 'true');
+    localStorage.setItem('hasSeenEbookPopup_v2', 'true');
   };
 
   // Google Drive direct image link
@@ -40,17 +40,17 @@ export default function EbookPopup() {
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-200 dark:border-gray-700"
+            className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-200 dark:border-gray-800"
           >
             <button 
               onClick={handleClose}
-              className="absolute top-3 right-3 p-2 bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 rounded-full transition-colors z-10"
+              className="absolute top-3 right-3 p-2 bg-black/10 dark:bg-white/10 hover:bg-black/20 dark:hover:bg-white/20 rounded-full transition-colors z-10 text-white"
             >
-              <X className="w-5 h-5 text-gray-800 dark:text-white" />
+              <X className="w-5 h-5" />
             </button>
 
             <div className="flex flex-col md:flex-row">
-              <div className="w-full md:w-2/5 bg-gradient-to-br from-blue-600 to-purple-700 p-4 flex items-center justify-center">
+              <div className="w-full md:w-2/5 bg-gradient-to-br from-sky-500 to-blue-600 p-4 flex items-center justify-center">
                 <img 
                   src={ebookImage} 
                   alt="AI Access Mastery eBook" 
@@ -70,7 +70,7 @@ export default function EbookPopup() {
                   <Link 
                     to="/ebook" 
                     onClick={handleClose}
-                    className="block w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-center font-medium rounded-lg transition-colors shadow-lg shadow-blue-600/20"
+                    className="block w-full py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-center font-medium rounded-lg transition-colors shadow-lg shadow-sky-500/20"
                   >
                     Get Access Now
                   </Link>

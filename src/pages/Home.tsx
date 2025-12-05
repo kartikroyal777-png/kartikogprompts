@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import PromptCard from '../components/PromptCard';
 import { supabase } from '../lib/supabase';
 import { Prompt } from '../types';
-import { motion } from 'framer-motion';
 
 export default function Home() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
@@ -24,17 +23,41 @@ export default function Home() {
         .from('prompts')
         .select(`
           *,
-          profiles:author_id (
-            full_name,
-            instagram_handle
-          )
+          images:prompt_images(storage_path)
         `)
         .eq('is_published', true)
         .order('likes_count', { ascending: false })
         .limit(9);
 
       if (error) throw error;
-      setPrompts(data || []);
+      
+      // Format prompts to handle images correctly
+      const formattedPrompts = (data || []).map((p: any) => {
+         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+         const storagePath = p.images?.[0]?.storage_path;
+         
+         if (storagePath) {
+             if (storagePath.startsWith('http')) {
+                 imageUrl = storagePath; 
+             } else {
+                 const { data: publicUrlData } = supabase.storage.from('prompt-images').getPublicUrl(storagePath);
+                 imageUrl = publicUrlData.publicUrl;
+             }
+         } else if (p.image) {
+            // Fallback to legacy image field if it exists
+            imageUrl = p.image;
+         }
+
+        return {
+          ...p,
+          promptId: p.id.substring(0, 5),
+          image: imageUrl,
+          author: p.credit_name || 'Admin',
+          likes: p.likes_count || 0
+        };
+      });
+
+      setPrompts(formattedPrompts);
     } catch (error) {
       console.error('Error fetching prompts:', error);
     } finally {
@@ -52,30 +75,31 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300">
-        <div className="absolute inset-0 bg-grid-slate-100 dark:bg-grid-slate-700/20 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] dark:[mask-image:linear-gradient(0deg,rgba(0,0,0,0.2),rgba(0,0,0,0.5))] bg-center [mask-position:top]" />
+      <div className="relative overflow-hidden bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+        {/* Gradient Check Background */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 sm:pt-24 sm:pb-20">
           <div className="text-center space-y-8 max-w-3xl mx-auto">
             <div className="flex justify-center">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 ring-1 ring-inset ring-blue-600/20">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300 ring-1 ring-inset ring-sky-600/20">
                 <Sparkles className="w-4 h-4 mr-2" />
-                Free AI Prompts Library
+                Free, Open-Source AI Prompts
               </span>
             </div>
             
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-gray-900 dark:text-white">
-              Copy. Paste. <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Create.</span>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-tight">
+              Copy. Paste. <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-blue-600">Create.</span>
             </h1>
             
-            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto font-normal">
-              The internet's best collection of Midjourney, Seedream & Stable Diffusion prompts. 
-              100% free. No sign-up required.
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto font-normal leading-relaxed">
+              The #1 free platform to discover and share high-quality AI art prompts. 
+              Totally free, no sign-up required.
             </p>
 
-            {/* Functional Search Bar - Reduced Width */}
+            {/* Search Bar */}
             <div className="max-w-md mx-auto relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full blur opacity-30 group-hover:opacity-50 transition duration-200"></div>
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-sky-500 to-blue-500 rounded-full blur opacity-30 group-hover:opacity-50 transition duration-200"></div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Search className="h-5 w-5 text-gray-400" />
@@ -84,22 +108,22 @@ export default function Home() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-3.5 bg-white dark:bg-gray-900 border-0 text-gray-900 dark:text-white placeholder:text-gray-500 ring-1 ring-inset ring-gray-200 dark:ring-gray-700 focus:ring-2 focus:ring-inset focus:ring-blue-600 rounded-full text-sm sm:text-base shadow-sm transition-all"
+                  className="block w-full pl-11 pr-4 py-3.5 bg-white dark:bg-gray-900 border-0 text-gray-900 dark:text-white placeholder:text-gray-500 ring-1 ring-inset ring-gray-200 dark:ring-gray-700 focus:ring-2 focus:ring-inset focus:ring-sky-500 rounded-full text-sm sm:text-base shadow-sm transition-all"
                   placeholder="Search prompts (e.g. 'cinematic', 'portrait')..."
                 />
               </div>
             </div>
 
-            <div className="flex flex-wrap justify-center gap-4">
+            <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
               <Link
                 to="/prompts"
-                className="inline-flex items-center px-6 py-3 rounded-full text-white bg-blue-600 hover:bg-blue-700 font-medium transition-all shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 hover:-translate-y-0.5"
+                className="inline-flex justify-center items-center px-8 py-3.5 rounded-full text-white bg-sky-500 hover:bg-sky-600 font-bold transition-all shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 hover:-translate-y-0.5"
               >
                 Browse All Prompts
               </Link>
               <Link
                 to="/upload"
-                className="inline-flex items-center px-6 py-3 rounded-full text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 font-medium transition-all hover:-translate-y-0.5"
+                className="inline-flex justify-center items-center px-8 py-3.5 rounded-full text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 font-bold transition-all hover:-translate-y-0.5 shadow-sm"
               >
                 Upload Prompt
               </Link>
@@ -110,20 +134,20 @@ export default function Home() {
 
       {/* Trending Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+        <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between mb-8 gap-4 text-center sm:text-left">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center justify-center sm:justify-start gap-2">
               <Zap className="w-6 h-6 text-yellow-500 fill-yellow-500" />
               Trending Now
             </h2>
-            <p className="mt-1 text-gray-500 dark:text-gray-400">Most loved prompts this week</p>
+            <p className="mt-2 text-gray-500 dark:text-gray-400">Most loved prompts this week</p>
           </div>
           <Link 
             to="/prompts" 
-            className="group flex items-center text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-700 dark:hover:text-blue-300 transition-colors bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-full"
+            className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-5 py-2.5 bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 font-semibold rounded-full hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-colors"
           >
             View All Prompts
-            <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
 
@@ -148,10 +172,10 @@ export default function Home() {
         )}
       </div>
 
-      {/* Ebook Teaser Section - Integrated Theme */}
-      <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-colors duration-300">
+      {/* Ebook Teaser Section */}
+      <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-          <div className="relative bg-gradient-to-br from-gray-900 to-gray-800 dark:from-black dark:to-gray-900 rounded-3xl overflow-hidden shadow-2xl border border-gray-700">
+          <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 dark:from-black dark:to-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-700">
             <div className="absolute inset-0 bg-grid-white/[0.05] [mask-image:linear-gradient(0deg,transparent,black)]" />
             
             <div className="relative grid md:grid-cols-2 gap-8 items-center p-8 sm:p-12">
@@ -163,17 +187,17 @@ export default function Home() {
                 
                 <h2 className="text-3xl sm:text-4xl font-bold text-white">
                   Stop Paying for AI Tools.
-                  <span className="block text-gray-400 text-xl sm:text-2xl mt-2 font-normal">Unlock Premium Access Legally.</span>
+                  <span className="block text-slate-400 text-xl sm:text-2xl mt-2 font-normal">Unlock Premium Access Legally.</span>
                 </h2>
                 
-                <p className="text-gray-400 text-lg">
+                <p className="text-slate-400 text-lg">
                   Get our "AI Access Mastery" eBook and learn how to use Veo 3, Sora 2, and Midjourney without expensive monthly subscriptions.
                 </p>
                 
                 <div className="flex flex-col sm:flex-row gap-4 pt-2">
                   <Link
                     to="/ebook"
-                    className="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold shadow-lg shadow-blue-900/20 transition-all hover:-translate-y-0.5"
+                    className="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold shadow-lg shadow-sky-900/20 transition-all hover:-translate-y-0.5"
                   >
                     <BookOpen className="w-5 h-5 mr-2" />
                     Get eBook (₹200)
@@ -191,10 +215,7 @@ export default function Home() {
               
               <div className="relative flex justify-center md:justify-end">
                 <div className="relative w-64 sm:w-72 aspect-[2/3] group perspective-1000">
-                  {/* Glow effect */}
-                  <div className="absolute -inset-4 bg-blue-500/30 rounded-full blur-3xl group-hover:bg-blue-500/40 transition-all duration-500" />
-                  
-                  {/* Book Image */}
+                  <div className="absolute -inset-4 bg-sky-500/30 rounded-full blur-3xl group-hover:bg-sky-500/40 transition-all duration-500" />
                   <img 
                     src={ebookImage}
                     alt="AI Access Mastery eBook Cover" 

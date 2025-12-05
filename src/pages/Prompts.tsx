@@ -23,13 +23,7 @@ const Prompts = () => {
       let query = supabase
         .from('prompts')
         .select(`
-          id,
-          title,
-          description,
-          category,
-          likes_count,
-          monetization_url,
-          credit_name,
+          *,
           images:prompt_images(storage_path)
         `)
         .eq('is_published', true)
@@ -44,26 +38,24 @@ const Prompts = () => {
       if (error) throw error;
 
       // Transform data to match Prompt interface
-      const formattedPrompts: Prompt[] = data.map((p: any) => {
-        // Handle image path vs full URL (for demo data)
-         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x400?text=No+Image';
+      const formattedPrompts: Prompt[] = (data || []).map((p: any) => {
+         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
          const storagePath = p.images?.[0]?.storage_path;
          
          if (storagePath) {
              if (storagePath.startsWith('http')) {
-                 imageUrl = storagePath; // It's a full URL (demo data)
+                 imageUrl = storagePath; 
              } else {
-                 imageUrl = supabase.storage.from('prompt-images').getPublicUrl(storagePath).data.publicUrl;
+                 const { data: publicUrlData } = supabase.storage.from('prompt-images').getPublicUrl(storagePath);
+                 imageUrl = publicUrlData.publicUrl;
              }
-         } else {
-             // Fallback for demo data if we inserted prompts without images in SQL
-             // We'll use a random unsplash image based on category
-             imageUrl = `https://source.unsplash.com/800x600/?${p.category}`;
+         } else if (p.image) {
+             imageUrl = p.image;
          }
 
         return {
           id: p.id,
-          promptId: p.id.substring(0, 5), // Mock short ID
+          promptId: p.id.substring(0, 5),
           title: p.title,
           description: p.description,
           author: p.credit_name || 'Admin',

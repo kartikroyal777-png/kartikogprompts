@@ -6,6 +6,7 @@ import { Prompt } from '../types';
 import { getIsLiked, toggleLike } from '../lib/likes';
 import { motion } from 'framer-motion';
 import { cn } from '../lib/utils';
+import ImageCarousel from '../components/ImageCarousel';
 
 const PromptDetail = () => {
   const { id } = useParams();
@@ -27,6 +28,7 @@ const PromptDetail = () => {
         .from('prompts')
         .select(`
           id,
+          short_id,
           title,
           description,
           video_prompt,
@@ -35,34 +37,40 @@ const PromptDetail = () => {
           monetization_url,
           credit_name,
           instagram_handle,
-          images:prompt_images(storage_path)
+          images:prompt_images(storage_path, order_index)
         `)
         .eq('id', id)
         .single();
 
       if (error) throw error;
 
-      const imagePath = p.images?.[0]?.storage_path;
-      let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x400?text=No+Image';
-      
-      if (imagePath) {
-         if (imagePath.startsWith('http')) {
-             imageUrl = imagePath;
-         } else {
-             imageUrl = supabase.storage.from('prompt-images').getPublicUrl(imagePath).data.publicUrl;
-         }
+      // Process images
+      const imagesList = (p.images || [])
+        .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
+        .map((img: any) => {
+          if (img.storage_path.startsWith('http')) return img.storage_path;
+          return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
+        });
+
+      // Fallback image if no prompt_images found (legacy support)
+      let primaryImage = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+      if (imagesList.length > 0) {
+        primaryImage = imagesList[0];
       }
 
-      const promptData = {
+      const promptData: Prompt = {
         id: p.id,
-        promptId: p.id.substring(0, 5),
+        short_id: p.short_id,
+        // Use short_id for display
+        promptId: p.short_id ? p.short_id.toString() : p.id.substring(0, 5),
         title: p.title,
         description: p.description,
         video_prompt: p.video_prompt,
         author: p.credit_name || 'Unknown',
         category: p.category,
         likes: p.likes_count || 0,
-        image: imageUrl,
+        image: primaryImage,
+        images: imagesList,
         monetization_url: p.monetization_url,
         instagram_handle: p.instagram_handle
       };
@@ -119,6 +127,8 @@ const PromptDetail = () => {
   if (loading) return <div className="min-h-screen flex items-center justify-center dark:bg-slate-950 dark:text-white"><div className="animate-pulse">Loading...</div></div>;
   if (!prompt) return <div className="min-h-screen flex items-center justify-center dark:bg-slate-950 dark:text-white">Prompt not found</div>;
 
+  const imagesToDisplay = prompt.images && prompt.images.length > 0 ? prompt.images : [prompt.image];
+
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 pb-24 transition-colors duration-300">
       {/* Back Button */}
@@ -140,13 +150,7 @@ const PromptDetail = () => {
             animate={{ opacity: 1, y: 0 }}
             className="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl bg-gray-100 dark:bg-slate-900 border border-gray-100 dark:border-slate-800 relative group"
           >
-            <img 
-              src={prompt.image} 
-              alt={prompt.title} 
-              className="w-full h-full object-cover"
-            />
-            {/* Zoom hint */}
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+            <ImageCarousel images={imagesToDisplay} alt={prompt.title} />
           </motion.div>
           
           {/* Action Buttons */}
@@ -199,16 +203,14 @@ const PromptDetail = () => {
                 <div className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Created by</div>
                 <div className="font-bold text-slate-900 dark:text-white">{prompt.author}</div>
               </div>
-              {prompt.instagram_handle && (
-                <a 
-                  href={prompt.instagram_handle.startsWith('http') ? prompt.instagram_handle : `https://instagram.com/${prompt.instagram_handle.replace('@', '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 bg-white dark:bg-slate-800 rounded-full text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition-colors"
-                >
-                  <Instagram className="w-5 h-5" />
-                </a>
-              )}
+              <a 
+                href="https://www.instagram.com/ogduo.prompts/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 bg-white dark:bg-slate-800 rounded-full text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition-colors"
+              >
+                <Instagram className="w-5 h-5" />
+              </a>
             </div>
           </div>
 

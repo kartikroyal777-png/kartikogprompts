@@ -53,10 +53,11 @@ const UploadPage = () => {
   const compressImage = async (file: File) => {
     try {
       const options = {
-        maxSizeMB: 0.2, // 200KB
-        maxWidthOrHeight: 1920,
-        useWebWorker: false, // Safer for compatibility
-        fileType: 'image/webp'
+        maxSizeMB: 0.07, // Target ~70KB (range 50-100KB)
+        maxWidthOrHeight: 1280, // Slightly reduced max dimension for better compression
+        useWebWorker: false,
+        fileType: 'image/webp',
+        initialQuality: 0.7
       };
       return await imageCompression(file, options);
     } catch (error) {
@@ -178,7 +179,7 @@ const UploadPage = () => {
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
-              Images will be auto-compressed to &lt;200KB.
+              Images will be auto-compressed to 50-100KB for speed.
             </p>
           </div>
 

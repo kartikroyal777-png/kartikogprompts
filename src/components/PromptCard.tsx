@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { getIsLiked, toggleLike } from '../lib/likes';
 import { cn } from '../lib/utils';
+import ImageCarousel from './ImageCarousel';
 
 interface PromptCardProps {
   prompt: Prompt;
@@ -27,7 +28,7 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt }) => {
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    // Prevent navigation if clicking the heart button
+    // Prevent navigation if clicking the heart button or slider buttons
     if ((e.target as HTMLElement).closest('button')) return;
 
     // Monetization Logic: Open link in new tab if exists
@@ -39,6 +40,10 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt }) => {
     navigate(`/prompt/${prompt.id}`);
   };
 
+  const imagesToDisplay = prompt.images && prompt.images.length > 0 
+    ? prompt.images 
+    : [prompt.image];
+
   return (
     <motion.div 
       layout
@@ -48,22 +53,19 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt }) => {
       onClick={handleClick}
       className="group relative aspect-[4/5] rounded-2xl overflow-hidden bg-gray-100 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer"
     >
-      {/* Background Image */}
-      <img 
-        src={prompt.image} 
-        alt={prompt.title}
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        loading="lazy"
-      />
+      {/* Image Carousel */}
+      <div className="absolute inset-0 w-full h-full">
+        <ImageCarousel images={imagesToDisplay} alt={prompt.title} />
+      </div>
       
       {/* Overlay Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity pointer-events-none" />
 
       {/* Content Container */}
-      <div className="absolute inset-0 p-4 flex flex-col justify-between">
+      <div className="absolute inset-0 p-4 flex flex-col justify-between pointer-events-none">
         
         {/* Top Row */}
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start pointer-events-auto">
           <div className="bg-black/40 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10">
             <span className="text-[10px] font-bold text-white/90 tracking-wider">ID: {prompt.promptId}</span>
           </div>
@@ -95,7 +97,6 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt }) => {
             <h3 className="text-lg font-bold text-white mb-1 line-clamp-1 leading-tight">{prompt.title}</h3>
             <div className="flex items-center gap-1.5 text-gray-300 text-xs">
               <span className="font-medium opacity-80">by {prompt.author}</span>
-              {/* Only show instagram icon if we assume author has one, purely visual here */}
               <Instagram className="w-3 h-3 opacity-70" />
             </div>
           </div>

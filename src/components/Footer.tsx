@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Instagram, Send, Sparkles } from 'lucide-react';
+import { Instagram, Send, Sparkles, Shield } from 'lucide-react';
 
 const Footer = () => {
   return (
@@ -18,7 +18,7 @@ const Footer = () => {
             </p>
             <div className="flex gap-4 mt-6">
               <a 
-                href="https://www.instagram.com/kartik.ogprompts/" 
+                href="https://www.instagram.com/ogduo.prompts/" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="p-2 bg-white dark:bg-slate-900 rounded-full shadow-sm hover:text-pink-600 dark:text-slate-300 dark:hover:text-pink-500 transition-colors"
@@ -56,8 +56,12 @@ const Footer = () => {
           </div>
         </div>
         
-        <div className="mt-12 pt-8 border-t border-gray-200 dark:border-slate-800 text-center text-sm text-slate-400">
+        <div className="mt-12 pt-8 border-t border-gray-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-400">
           <p>© {new Date().getFullYear()} OGPrompts. All rights reserved.</p>
+          <Link to="/admin" className="flex items-center gap-1 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+            <Shield className="w-3 h-3" />
+            Admin Panel
+          </Link>
         </div>
       </div>
     </footer>

@@ -126,7 +126,7 @@ export default function EbookPage() {
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <a 
-                  href="https://www.instagram.com/kartik.ogprompts/"
+                  href="https://www.instagram.com/ogduo.prompts/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex justify-center items-center px-8 py-4 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold text-lg shadow-lg shadow-sky-500/20 transition-all hover:-translate-y-1"
@@ -292,7 +292,7 @@ export default function EbookPage() {
                 </div>
 
                 <a 
-                  href="https://www.instagram.com/kartik.ogprompts/"
+                  href="https://www.instagram.com/ogduo.prompts/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block w-full py-4 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl shadow-lg shadow-sky-500/25 transition-all hover:-translate-y-1 mb-4"

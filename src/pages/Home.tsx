@@ -23,7 +23,7 @@ export default function Home() {
         .from('prompts')
         .select(`
           *,
-          images:prompt_images(storage_path)
+          images:prompt_images(storage_path, order_index)
         `)
         .eq('is_published', true)
         .order('likes_count', { ascending: false })
@@ -31,27 +31,29 @@ export default function Home() {
 
       if (error) throw error;
       
-      // Format prompts to handle images correctly
       const formattedPrompts = (data || []).map((p: any) => {
-         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
-         const storagePath = p.images?.[0]?.storage_path;
-         
-         if (storagePath) {
-             if (storagePath.startsWith('http')) {
-                 imageUrl = storagePath; 
-             } else {
-                 const { data: publicUrlData } = supabase.storage.from('prompt-images').getPublicUrl(storagePath);
-                 imageUrl = publicUrlData.publicUrl;
-             }
+         // Process multiple images
+         const imagesList = (p.images || [])
+            .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
+            .map((img: any) => {
+              if (img.storage_path.startsWith('http')) return img.storage_path;
+              return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
+            });
+
+         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+         if (imagesList.length > 0) {
+             imageUrl = imagesList[0];
          } else if (p.image) {
-            // Fallback to legacy image field if it exists
             imageUrl = p.image;
          }
 
         return {
           ...p,
-          promptId: p.id.substring(0, 5),
+          short_id: p.short_id,
+          // Use short_id if available, otherwise fallback to substring
+          promptId: p.short_id ? p.short_id.toString() : p.id.substring(0, 5),
           image: imageUrl,
+          images: imagesList,
           author: p.credit_name || 'Admin',
           likes: p.likes_count || 0
         };
@@ -69,7 +71,8 @@ export default function Home() {
   const filteredPrompts = prompts.filter(prompt => 
     prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
     prompt.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (prompt.category && prompt.category.toLowerCase().includes(searchQuery.toLowerCase()))
+    (prompt.category && prompt.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    prompt.promptId.includes(searchQuery) // Allow searching by ID in home too
   );
 
   return (
@@ -109,7 +112,7 @@ export default function Home() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="block w-full pl-11 pr-4 py-3.5 bg-white dark:bg-gray-900 border-0 text-gray-900 dark:text-white placeholder:text-gray-500 ring-1 ring-inset ring-gray-200 dark:ring-gray-700 focus:ring-2 focus:ring-inset focus:ring-sky-500 rounded-full text-sm sm:text-base shadow-sm transition-all"
-                  placeholder="Search prompts (e.g. 'cinematic', 'portrait')..."
+                  placeholder="Search prompts (e.g. 'cinematic', '10012')..."
                 />
               </div>
             </div>
@@ -203,7 +206,7 @@ export default function Home() {
                     Get eBook (₹200)
                   </Link>
                   <a
-                    href="https://www.instagram.com/kartik.ogprompts/"
+                    href="https://www.instagram.com/ogduo.prompts/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium backdrop-blur-sm transition-all border border-white/10 hover:scale-105 active:scale-95"

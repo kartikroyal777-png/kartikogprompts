@@ -2,13 +2,14 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
-import Footer from './components/Footer'; // Ensure Footer is imported
+import Footer from './components/Footer'; 
 import Home from './pages/Home';
 import Prompts from './pages/Prompts';
-import PromptDetail from './pages/PromptDetail'; // Import PromptDetail
+import PromptDetail from './pages/PromptDetail';
 import UploadPage from './pages/UploadPage';
 import Auth from './pages/Auth';
 import EbookPage from './pages/EbookPage';
+import Admin from './pages/Admin'; // Import Admin
 import { About as AboutPage, Privacy as PrivacyPage, Terms as TermsPage } from './pages/Legal';
 import InstructionsPage from './pages/Instructions';
 import { AuthProvider } from './context/AuthContext';
@@ -29,17 +30,18 @@ function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/prompts" element={<Prompts />} />
-                <Route path="/prompt/:id" element={<PromptDetail />} /> {/* Added Route */}
+                <Route path="/prompt/:id" element={<PromptDetail />} />
                 <Route path="/upload" element={<UploadPage />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/ebook" element={<EbookPage />} />
+                <Route path="/admin" element={<Admin />} /> {/* Admin Route */}
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/instructions" element={<InstructionsPage />} />
               </Routes>
             </div>
-            <Footer /> {/* Added Footer */}
+            <Footer />
             <BottomNav />
           </div>
         </Router>

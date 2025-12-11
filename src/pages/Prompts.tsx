@@ -24,7 +24,7 @@ const Prompts = () => {
         .from('prompts')
         .select(`
           *,
-          images:prompt_images(storage_path)
+          images:prompt_images(storage_path, order_index)
         `)
         .eq('is_published', true)
         .order('created_at', { ascending: false });
@@ -39,29 +39,33 @@ const Prompts = () => {
 
       // Transform data to match Prompt interface
       const formattedPrompts: Prompt[] = (data || []).map((p: any) => {
-         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
-         const storagePath = p.images?.[0]?.storage_path;
-         
-         if (storagePath) {
-             if (storagePath.startsWith('http')) {
-                 imageUrl = storagePath; 
-             } else {
-                 const { data: publicUrlData } = supabase.storage.from('prompt-images').getPublicUrl(storagePath);
-                 imageUrl = publicUrlData.publicUrl;
-             }
+         // Process multiple images
+         const imagesList = (p.images || [])
+            .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
+            .map((img: any) => {
+              if (img.storage_path.startsWith('http')) return img.storage_path;
+              return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
+            });
+
+         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+         if (imagesList.length > 0) {
+             imageUrl = imagesList[0];
          } else if (p.image) {
-             imageUrl = p.image;
+            imageUrl = p.image;
          }
 
         return {
           id: p.id,
-          promptId: p.id.substring(0, 5),
+          short_id: p.short_id,
+          // Use short_id for display if available
+          promptId: p.short_id ? p.short_id.toString() : p.id.substring(0, 5),
           title: p.title,
           description: p.description,
           author: p.credit_name || 'Admin',
           category: p.category,
           likes: p.likes_count || 0,
           image: imageUrl,
+          images: imagesList,
           monetization_url: p.monetization_url
         };
       });
@@ -75,7 +79,8 @@ const Prompts = () => {
   };
 
   const filteredPrompts = prompts.filter(prompt => 
-    prompt.title.toLowerCase().includes(searchQuery.toLowerCase())
+    prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    prompt.promptId.includes(searchQuery)
   );
 
   return (
@@ -90,7 +95,7 @@ const Prompts = () => {
             </div>
             <input
               type="text"
-              placeholder="Search prompts..."
+              placeholder="Search prompts (e.g. 'Neon', '10012')..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-full text-slate-600 dark:text-white placeholder-slate-400 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all shadow-sm"

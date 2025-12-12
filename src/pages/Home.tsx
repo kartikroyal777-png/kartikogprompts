@@ -1,14 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Sparkles, ArrowRight, BookOpen, Zap, Star } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import PromptCard from '../components/PromptCard';
 import { supabase } from '../lib/supabase';
 import { Prompt } from '../types';
+import { useAuth } from '../context/AuthContext';
+import AuthModal from '../components/AuthModal';
 
 export default function Home() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   // Google Drive direct image link
   const ebookImage = "https://lh3.googleusercontent.com/d/1m8rI80MB2hEuKdIk-N7KBb11m7INvj0m";
@@ -32,7 +37,6 @@ export default function Home() {
       if (error) throw error;
       
       const formattedPrompts = (data || []).map((p: any) => {
-         // Process multiple images
          const imagesList = (p.images || [])
             .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
             .map((img: any) => {
@@ -40,7 +44,7 @@ export default function Home() {
               return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
             });
 
-         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
          if (imagesList.length > 0) {
              imageUrl = imagesList[0];
          } else if (p.image) {
@@ -50,7 +54,6 @@ export default function Home() {
         return {
           ...p,
           short_id: p.short_id,
-          // Use short_id if available, otherwise fallback to substring
           promptId: p.short_id ? p.short_id.toString() : p.id.substring(0, 5),
           image: imageUrl,
           images: imagesList,
@@ -67,19 +70,25 @@ export default function Home() {
     }
   }
 
-  // Filter prompts based on search
+  const handleBecomeCreatorClick = () => {
+    if (user) {
+      navigate('/become-creator');
+    } else {
+      setIsAuthOpen(true);
+    }
+  };
+
   const filteredPrompts = prompts.filter(prompt => 
     prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
     prompt.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (prompt.category && prompt.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    prompt.promptId.includes(searchQuery) // Allow searching by ID in home too
+    prompt.promptId.includes(searchQuery)
   );
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
-        {/* Gradient Check Background - Expanded mask to spread further down */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:linear-gradient(to_bottom,#000_60%,transparent_100%)]"></div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 sm:pt-32 sm:pb-32">
@@ -124,12 +133,23 @@ export default function Home() {
               >
                 Browse All Prompts
               </Link>
-              <Link
-                to="/upload"
-                className="inline-flex justify-center items-center px-8 py-3.5 rounded-full text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 font-bold transition-all shadow-sm hover:scale-105 active:scale-95 duration-300"
-              >
-                Upload Prompt
-              </Link>
+              
+              {/* Dynamic Button based on role */}
+              {profile?.creator_badge ? (
+                <Link
+                  to="/upload"
+                  className="inline-flex justify-center items-center px-8 py-3.5 rounded-full text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 font-bold transition-all shadow-sm hover:scale-105 active:scale-95 duration-300"
+                >
+                  Upload Prompt
+                </Link>
+              ) : (
+                <button
+                  onClick={handleBecomeCreatorClick}
+                  className="inline-flex justify-center items-center px-8 py-3.5 rounded-full text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 font-bold transition-all shadow-lg shadow-purple-500/25 hover:scale-105 active:scale-95 duration-300"
+                >
+                  Become a Creator
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -203,7 +223,7 @@ export default function Home() {
                     className="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold shadow-lg shadow-sky-900/20 transition-all hover:-translate-y-0.5 hover:scale-105 active:scale-95"
                   >
                     <BookOpen className="w-5 h-5 mr-2" />
-                    Get eBook (₹200)
+                    Get eBook (20 Credits)
                   </Link>
                   <a
                     href="https://www.instagram.com/ogduo.prompts/"
@@ -231,6 +251,8 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </div>
   );
 }

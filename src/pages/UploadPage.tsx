@@ -1,36 +1,70 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Image as ImageIcon, X, Loader2, AlertCircle, Sparkles, Video } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, Loader2, Coins, Layers } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Category } from '../types';
 import imageCompression from 'browser-image-compression';
 import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 const CATEGORIES: Category[] = ['Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape'];
 
 const UploadPage = () => {
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   
+  // Dynamic prompts for bundles
+  const [promptTexts, setPromptTexts] = useState<string[]>(['']);
+
   const [formData, setFormData] = useState({
     title: '',
-    description: '',
+    description: '', // Preview text for paid
+    full_text: '',   // Main prompt text (for single image)
     video_prompt: '',
     category: 'Men',
     monetization_url: '',
     credit_name: '',
     instagram_handle: '',
+    is_paid: false,
+    price_credits: 0.5,
+    is_bundle: false
   });
 
-  // Cleanup previews to avoid memory leaks
+  useEffect(() => {
+    if (profile && !profile.creator_badge) {
+      navigate('/become-creator');
+    }
+  }, [profile]);
+
+  // Cleanup previews
   useEffect(() => {
     return () => {
       previews.forEach(url => URL.revokeObjectURL(url));
     };
   }, [previews]);
+
+  // Auto-enable bundle if > 1 image
+  useEffect(() => {
+    const isMultiple = files.length > 1;
+    setFormData(prev => ({ ...prev, is_bundle: isMultiple }));
+    
+    // Adjust prompt text array size
+    setPromptTexts(prev => {
+      const newTexts = [...prev];
+      if (files.length > newTexts.length) {
+        // Add empty strings for new images
+        return [...newTexts, ...Array(files.length - newTexts.length).fill('')];
+      } else if (files.length < newTexts.length && files.length > 0) {
+        // Trim if fewer images (keep at least 1)
+        return newTexts.slice(0, files.length);
+      }
+      return newTexts;
+    });
+  }, [files.length]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -48,13 +82,26 @@ const UploadPage = () => {
       URL.revokeObjectURL(newPreviews[index]);
       return newPreviews.filter((_, i) => i !== index);
     });
+    setPromptTexts(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handlePromptTextChange = (index: number, value: string) => {
+    setPromptTexts(prev => {
+      const newTexts = [...prev];
+      newTexts[index] = value;
+      return newTexts;
+    });
+    // Sync first text with main full_text for backward compatibility
+    if (index === 0) {
+      setFormData(prev => ({ ...prev, full_text: value }));
+    }
   };
 
   const compressImage = async (file: File) => {
     try {
       const options = {
-        maxSizeMB: 0.07, // Target ~70KB (range 50-100KB)
-        maxWidthOrHeight: 1280, // Slightly reduced max dimension for better compression
+        maxSizeMB: 0.07,
+        maxWidthOrHeight: 1280,
         useWebWorker: false,
         fileType: 'image/webp',
         initialQuality: 0.7
@@ -77,25 +124,48 @@ const UploadPage = () => {
     setUploadProgress(0);
 
     try {
+      const promptDescription = formData.is_paid 
+        ? (formData.description || "Unlock to see the full prompt.") 
+        : (formData.is_bundle ? "View bundle for details." : promptTexts[0]);
+
       // 1. Create Prompt Record
       const { data: prompt, error: promptError } = await supabase
         .from('prompts')
         .insert({
           title: formData.title,
-          description: formData.description,
+          description: promptDescription,
           video_prompt: formData.video_prompt,
           category: formData.category,
           monetization_url: formData.monetization_url,
-          credit_name: formData.credit_name,
+          credit_name: formData.credit_name || profile?.display_name,
           instagram_handle: formData.instagram_handle,
           is_published: true,
+          creator_id: user?.id,
+          is_paid: formData.is_paid,
+          price_credits: formData.is_paid ? formData.price_credits : null,
+          is_bundle: formData.is_bundle
         })
         .select()
         .single();
 
       if (promptError) throw promptError;
 
-      // 2. Process and Upload Images
+      // 2. Insert Content (Secure)
+      if (formData.is_paid) {
+        const bundleData = promptTexts.map((text, idx) => ({ index: idx, text }));
+        
+        const { error: contentError } = await supabase
+          .from('prompt_contents')
+          .insert({
+            prompt_id: prompt.id,
+            full_text: promptTexts[0], // Main text
+            bundle_data: bundleData // All texts
+          });
+          
+        if (contentError) throw contentError;
+      }
+
+      // 3. Upload Images
       const totalSteps = files.length;
       
       for (let i = 0; i < files.length; i++) {
@@ -109,9 +179,8 @@ const UploadPage = () => {
           .from('prompt-images')
           .upload(fileName, compressedFile);
 
-        if (uploadError) {
-             console.error("Upload error:", uploadError);
-        } else {
+        if (uploadError) console.error("Upload error:", uploadError);
+        else {
             await supabase
             .from('prompt_images')
             .insert({
@@ -140,27 +209,29 @@ const UploadPage = () => {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-2xl mx-auto bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-slate-800"
+        className="max-w-3xl mx-auto bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-gray-100 dark:border-slate-800"
       >
         <div className="px-8 py-6 border-b border-gray-100 dark:border-slate-800 bg-sky-500/5">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Upload className="w-6 h-6 text-sky-500" />
             Upload Prompt
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Share your creations with the world. No login required.</p>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="p-8 space-y-8">
           {/* Image Upload */}
-          <div className="space-y-2">
+          <div className="space-y-4">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Prompt Images <span className="text-red-500">*</span>
             </label>
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {previews.map((src, idx) => (
                 <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group border border-gray-200 dark:border-slate-700">
                   <img src={src} alt="Preview" className="w-full h-full object-cover" />
+                  <div className="absolute top-1 left-1 bg-black/50 text-white text-xs px-1.5 rounded">
+                    {idx + 1}
+                  </div>
                   <button 
                     type="button"
                     onClick={() => removeFile(idx)}
@@ -177,10 +248,12 @@ const UploadPage = () => {
                 <input type="file" className="sr-only" accept="image/*" multiple onChange={handleFileChange} />
               </label>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-500 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" />
-              Images will be auto-compressed to 50-100KB for speed.
-            </p>
+            {formData.is_bundle && (
+              <div className="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/10 p-2 rounded-lg">
+                <Layers className="w-4 h-4" />
+                Bundle Mode Activated: Multiple images detected.
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -191,7 +264,7 @@ const UploadPage = () => {
                 required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all"
+                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none"
                 placeholder="e.g., Neon Samurai"
               />
             </div>
@@ -201,7 +274,7 @@ const UploadPage = () => {
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all"
+                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none"
               >
                 {CATEGORIES.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
@@ -210,77 +283,73 @@ const UploadPage = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Prompt Text <span className="text-red-500">*</span></label>
-            <textarea
-              required
-              rows={4}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all"
-              placeholder="The exact prompt used to generate the image..."
-            />
-          </div>
-
-          {/* Video Prompt Section */}
-          <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-xl border border-purple-100 dark:border-purple-900/20">
-            <label className="block text-sm font-bold text-purple-900 dark:text-purple-300 mb-2 flex items-center gap-2">
-              <Video className="w-4 h-4" />
-              Video Prompt (Optional)
-            </label>
-            <textarea
-              rows={3}
-              value={formData.video_prompt}
-              onChange={(e) => setFormData({ ...formData, video_prompt: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg border border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none transition-all"
-              placeholder="Add a prompt specifically for video generation (Sora, Veo, etc.)"
-            />
-            <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
-              This will be shown in a separate section on the details page.
-            </p>
-          </div>
-
-          <div className="border-t border-gray-100 dark:border-slate-800 pt-6">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              Credits & Monetization (Optional)
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Your Name / Credit</label>
-                <input
-                  type="text"
-                  value={formData.credit_name}
-                  onChange={(e) => setFormData({ ...formData, credit_name: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all"
-                  placeholder="e.g., Kartik"
+          {/* Pricing Section */}
+          <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-xl border border-amber-100 dark:border-amber-900/20">
+            <div className="flex items-center justify-between mb-4">
+              <label className="flex items-center gap-2 text-sm font-bold text-amber-900 dark:text-amber-300">
+                <Coins className="w-4 h-4" />
+                Premium Prompt?
+              </label>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={formData.is_paid}
+                  onChange={e => setFormData({...formData, is_paid: e.target.checked})}
+                  className="sr-only peer" 
                 />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Instagram Handle</label>
-                <input
-                  type="text"
-                  value={formData.instagram_handle}
-                  onChange={(e) => setFormData({ ...formData, instagram_handle: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all"
-                  placeholder="@username"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Monetization / Direct Link</label>
-                <input
-                  type="url"
-                  value={formData.monetization_url}
-                  onChange={(e) => setFormData({ ...formData, monetization_url: e.target.value })}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none transition-all"
-                  placeholder="https://your-ad-link.com/..."
-                />
-              </div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+              </label>
             </div>
+
+            {formData.is_paid && (
+              <div>
+                <label className="block text-xs font-medium text-amber-800 dark:text-amber-400 mb-1">Price (Credits)</label>
+                <input
+                  type="number"
+                  min="0.1"
+                  max="1.0"
+                  step="0.1"
+                  value={formData.price_credits}
+                  onChange={e => setFormData({...formData, price_credits: parseFloat(e.target.value)})}
+                  className="w-full px-4 py-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+            )}
           </div>
+
+          {/* Dynamic Prompt Inputs */}
+          <div className="space-y-4">
+            {promptTexts.map((text, idx) => (
+              <div key={idx}>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  {formData.is_bundle ? `Prompt for Image ${idx + 1}` : 'Prompt Text'} <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={text}
+                  onChange={(e) => handlePromptTextChange(idx, e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none"
+                  placeholder={formData.is_paid ? "Hidden until unlocked..." : "Enter prompt..."}
+                />
+              </div>
+            ))}
+          </div>
+
+          {formData.is_paid && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Preview Text (Public)
+              </label>
+              <textarea
+                rows={2}
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none"
+                placeholder="A teaser description..."
+              />
+            </div>
+          )}
 
           <button
             type="submit"

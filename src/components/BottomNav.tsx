@@ -1,17 +1,22 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, PlusSquare, BookOpen, User, LayoutGrid } from 'lucide-react';
+import { Home, PlusSquare, BookOpen, User, LayoutGrid, Coins } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 const BottomNav = () => {
   const location = useLocation();
+  const { user, profile } = useAuth();
 
   const navItems = [
     { icon: Home, label: 'Home', path: '/' },
     { icon: LayoutGrid, label: 'Prompts', path: '/prompts' },
-    { icon: PlusSquare, label: 'Upload', path: '/upload' },
+    // Show Upload only if creator, else show Buy Credits or become creator
+    profile?.creator_badge 
+      ? { icon: PlusSquare, label: 'Upload', path: '/upload' }
+      : { icon: Coins, label: 'Credits', path: '/buy-credits' },
     { icon: BookOpen, label: 'Ebook', path: '/ebook' },
-    { icon: User, label: 'About', path: '/about' },
+    { icon: User, label: 'Profile', path: '/profile' },
   ];
 
   return (

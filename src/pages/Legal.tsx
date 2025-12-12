@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, BookOpen, ShieldAlert, Mail, CheckCircle, Sparkles, Heart, Info } from 'lucide-react';
+import { Users, BookOpen, ShieldAlert, Mail, CheckCircle, Sparkles, Info } from 'lucide-react';
 
 const LegalLayout = ({ title, children }: { title: string, children: React.ReactNode }) => (
   <div className="min-h-screen bg-white dark:bg-slate-950 py-12 px-4 pt-24 pb-12 transition-colors duration-300">
@@ -35,7 +35,7 @@ export const About = () => (
             Who We Are
           </h2>
           <p className="text-xl text-slate-700 dark:text-slate-300 mb-8 leading-relaxed font-medium">
-            Hi! We’re <span className="text-sky-500 font-bold">Kartik Kumawat & Akshita</span> — creators of OG Prompts.
+            Hi! We’re <span className="text-sky-500 font-bold">Kartik Kumawat & Akshita Vashist</span> — creators of OG Prompts.
           </p>
           
           <div className="bg-slate-50 dark:bg-slate-950/50 rounded-2xl p-6 mb-8 border border-slate-100 dark:border-slate-800">
@@ -163,8 +163,7 @@ export const About = () => (
         <div className="mt-10 flex items-center justify-center gap-2 text-slate-900 dark:text-white font-medium">
           <span>Happy prompting!</span>
           <span className="text-slate-300 dark:text-slate-600">—</span>
-          <span>Kartik & Akshita</span>
-          <Heart className="w-4 h-4 text-red-500 fill-current animate-pulse" />
+          <span>Kartik Kumawat & Akshita Vashist</span>
         </div>
       </div>
     </div>

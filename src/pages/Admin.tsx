@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Shield, Lock, Search, Trash2, AlertTriangle, Check, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Shield, Lock, Search, Trash2, AlertTriangle, Check, RefreshCw, DollarSign, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Prompt } from '../types';
+import { Prompt, PayoutRequest } from '../types';
 
 const ADMIN_PASSWORD = 'KARTIK#1234567';
 
@@ -9,19 +9,70 @@ export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<'prompts' | 'payouts'>('prompts');
   
+  // Prompts State
   const [searchId, setSearchId] = useState('');
   const [searchResults, setSearchResults] = useState<Prompt[]>([]);
   const [searching, setSearching] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  // Payouts State
+  const [payouts, setPayouts] = useState<PayoutRequest[]>([]);
+  const [loadingPayouts, setLoadingPayouts] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === ADMIN_PASSWORD) {
       setIsAuthenticated(true);
       setError('');
+      fetchPayouts(); // Fetch payouts on login
     } else {
       setError('Invalid password');
+    }
+  };
+
+  const fetchPayouts = async () => {
+    setLoadingPayouts(true);
+    try {
+      const { data, error } = await supabase
+        .from('payout_requests')
+        .select(`
+          *,
+          profiles:creator_id (display_name, email)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Transform to flatten profile info
+      const formatted = (data || []).map((p: any) => ({
+        ...p,
+        creator_name: p.profiles?.display_name || p.profiles?.email || 'Unknown'
+      }));
+
+      setPayouts(formatted);
+    } catch (err) {
+      console.error("Error fetching payouts", err);
+    } finally {
+      setLoadingPayouts(false);
+    }
+  };
+
+  const handleMarkPaid = async (id: string) => {
+    if (!confirm("Mark this request as PAID? Ensure you have transferred the funds.")) return;
+    
+    try {
+      const { error } = await supabase
+        .from('payout_requests')
+        .update({ status: 'paid', paid_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      setPayouts(prev => prev.map(p => p.id === id ? { ...p, status: 'paid' } : p));
+    } catch (err: any) {
+      alert("Error: " + err.message);
     }
   };
 
@@ -40,16 +91,11 @@ export default function Admin() {
           images:prompt_images(storage_path, order_index)
         `);
 
-      // Robust Search Logic
       const isNumeric = /^\d+$/.test(searchId);
 
       if (isNumeric) {
-        // Fix: Use direct equality for short_id to avoid parser errors in .or()
-        // This assumes admin is looking for the exact 5-digit ID (e.g. 10030)
         query = query.eq('short_id', parseInt(searchId));
       } else {
-        // If input has letters, search the UUID (id) column
-        // We use .filter with explicit casting to text to handle UUIDs safely
         query = query.filter('id::text', 'ilike', `${searchId}%`);
       }
 
@@ -68,14 +114,13 @@ export default function Admin() {
         return {
           id: p.id,
           short_id: p.short_id,
-          // Prioritize showing the 5-digit ID
           promptId: p.short_id ? p.short_id.toString() : p.id.substring(0, 5),
           title: p.title,
           description: p.description,
           author: p.credit_name || 'Admin',
           category: p.category,
           likes: p.likes_count || 0,
-          image: imagesList[0] || p.image || 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800?text=No+Image',
+          image: imagesList[0] || p.image || 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800?text=No+Image',
           images: imagesList,
           monetization_url: p.monetization_url
         };
@@ -95,14 +140,12 @@ export default function Admin() {
 
     setDeleting(id);
     try {
-      // Delete images from storage first (optional but good practice)
       const { data: images } = await supabase.from('prompt_images').select('storage_path').eq('prompt_id', id);
       if (images && images.length > 0) {
         const paths = images.map(img => img.storage_path);
         await supabase.storage.from('prompt-images').remove(paths);
       }
 
-      // Delete the prompt record
       const { error } = await supabase
         .from('prompts')
         .delete()
@@ -163,7 +206,7 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 pt-28 pb-12 px-4 transition-colors duration-300">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
             <Shield className="w-8 h-8 text-red-600" />
@@ -177,73 +220,146 @@ export default function Admin() {
           </button>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-800 p-6 mb-8">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Find & Delete Prompts</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
-            Enter the 5-digit Prompt ID (e.g., "10010") to find and remove inappropriate content.
-          </p>
-
-          <form onSubmit={handleSearch} className="flex gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                value={searchId}
-                onChange={(e) => setSearchId(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
-                placeholder="Enter ID (e.g. 10001)..."
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={searching}
-              className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
-            >
-              {searching ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Search'}
-            </button>
-          </form>
+        {/* Tabs */}
+        <div className="flex gap-4 mb-8 border-b border-gray-200 dark:border-slate-800">
+          <button
+            onClick={() => setActiveTab('prompts')}
+            className={`pb-4 px-4 font-bold text-sm transition-colors relative ${
+              activeTab === 'prompts' 
+                ? 'text-sky-500' 
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            Manage Prompts
+            {activeTab === 'prompts' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500" />}
+          </button>
+          <button
+            onClick={() => { setActiveTab('payouts'); fetchPayouts(); }}
+            className={`pb-4 px-4 font-bold text-sm transition-colors relative ${
+              activeTab === 'payouts' 
+                ? 'text-sky-500' 
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            Payout Requests
+            {activeTab === 'payouts' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500" />}
+          </button>
         </div>
 
-        {/* Results */}
-        <div className="space-y-4">
-          {searchResults.map((prompt) => (
-            <div key={prompt.id} className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-gray-200 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
-                <img src={prompt.image} alt="" className="w-full h-full object-cover" />
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="px-2 py-0.5 bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-xs font-bold rounded">
-                    ID: {prompt.promptId}
-                  </span>
-                  <span className="text-xs text-slate-400 font-mono truncate max-w-[150px]">{prompt.id}</span>
-                </div>
-                <h3 className="font-bold text-slate-900 dark:text-white truncate">{prompt.title}</h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{prompt.description}</p>
-              </div>
+        {activeTab === 'prompts' ? (
+          <>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-800 p-6 mb-8">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Find & Delete Prompts</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+                Enter the 5-digit Prompt ID (e.g., "10010") to find and remove inappropriate content.
+              </p>
 
-              <button
-                onClick={() => handleDelete(prompt.id)}
-                disabled={deleting === prompt.id}
-                className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors font-medium text-sm whitespace-nowrap"
-              >
-                {deleting === prompt.id ? 'Deleting...' : (
-                  <>
-                    <Trash2 className="w-4 h-4" />
-                    Delete
-                  </>
-                )}
+              <form onSubmit={handleSearch} className="flex gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchId}
+                    onChange={(e) => setSearchId(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
+                    placeholder="Enter ID (e.g. 10001)..."
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={searching}
+                  className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+                >
+                  {searching ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Search'}
+                </button>
+              </form>
+            </div>
+
+            <div className="space-y-4">
+              {searchResults.map((prompt) => (
+                <div key={prompt.id} className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-gray-200 dark:border-slate-800 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                  <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
+                    <img src={prompt.image} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="px-2 py-0.5 bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 text-xs font-bold rounded">
+                        ID: {prompt.promptId}
+                      </span>
+                      <span className="text-xs text-slate-400 font-mono truncate max-w-[150px]">{prompt.id}</span>
+                    </div>
+                    <h3 className="font-bold text-slate-900 dark:text-white truncate">{prompt.title}</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{prompt.description}</p>
+                  </div>
+
+                  <button
+                    onClick={() => handleDelete(prompt.id)}
+                    disabled={deleting === prompt.id}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors font-medium text-sm whitespace-nowrap"
+                  >
+                    {deleting === prompt.id ? 'Deleting...' : (
+                      <>
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </>
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Withdrawal Requests</h2>
+              <button onClick={fetchPayouts} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full">
+                <RefreshCw className={`w-4 h-4 ${loadingPayouts ? 'animate-spin' : ''}`} />
               </button>
             </div>
-          ))}
 
-          {searchResults.length === 0 && !searching && searchId && (
-            <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-              No prompts found with that ID.
-            </div>
-          )}
-        </div>
+            {payouts.length === 0 && !loadingPayouts && (
+              <div className="text-center py-12 text-slate-500">No payout requests found.</div>
+            )}
+
+            {payouts.map((request) => (
+              <div key={request.id} className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-gray-200 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`px-2 py-0.5 text-xs font-bold rounded uppercase ${
+                      request.status === 'paid' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {request.status}
+                    </span>
+                    <span className="text-xs text-slate-400">{new Date(request.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-lg">
+                    ${request.usd_converted} USD 
+                    <span className="text-sm font-normal text-slate-500 ml-2">({request.credits_requested} Credits)</span>
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                    Creator: <span className="font-medium">{request.creator_name}</span>
+                  </p>
+                  <div className="mt-2 p-2 bg-gray-50 dark:bg-slate-950 rounded border border-gray-100 dark:border-slate-800 text-xs font-mono text-slate-600 dark:text-slate-400 break-all">
+                    {request.payout_ref}
+                  </div>
+                </div>
+
+                {request.status === 'pending' && (
+                  <button
+                    onClick={() => handleMarkPaid(request.id)}
+                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Check className="w-4 h-4" />
+                    Mark Paid
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

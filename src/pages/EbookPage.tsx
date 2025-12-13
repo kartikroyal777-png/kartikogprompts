@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Book, Check, Star, Zap, Shield, Gift, Lock, Download, HelpCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { BookOpen, Check, Star, Zap, Shield, Gift, Lock, Download, HelpCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
@@ -104,7 +104,7 @@ const EbookPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 pt-24 pb-12 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white pt-24 pb-12 transition-colors duration-300">
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -116,7 +116,7 @@ const EbookPage = () => {
               initial={{ opacity: 0, scale: 0.9, rotate: -5 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               transition={{ duration: 0.6 }}
-              className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl shadow-sky-500/20 border border-slate-200"
+              className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl shadow-sky-500/20 border border-slate-200 dark:border-slate-800"
             >
               <img 
                 src={COVER_IMAGE} 
@@ -131,11 +131,11 @@ const EbookPage = () => {
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-5xl font-black mb-6 text-slate-900 leading-tight"
+              className="text-4xl md:text-5xl font-black mb-6 text-slate-900 dark:text-white leading-tight"
             >
-              Stop Paying for <span className="text-sky-600">AI Subscriptions</span>
+              Stop Paying for <span className="text-sky-600 dark:text-sky-400">AI Subscriptions</span>
             </motion.h1>
-            <p className="text-xl text-slate-600 mb-8 leading-relaxed">
+            <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 leading-relaxed">
               Unlock Veo 3, Sora 2 Pro, Midjourney & more for FREE using legal, hidden workflows.
             </p>
             
@@ -165,7 +165,7 @@ const EbookPage = () => {
                 </button>
               )}
             </div>
-            <p className="text-xs text-slate-500 mt-4 font-medium">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-4 font-medium">
               Instant Access • Lifetime Updates • 100% Legal
             </p>
           </div>
@@ -173,7 +173,7 @@ const EbookPage = () => {
 
         {/* What's Inside Grid */}
         <div className="mb-24">
-          <h2 className="text-3xl font-bold text-center mb-12 text-slate-900">What's Inside?</h2>
+          <h2 className="text-3xl font-bold text-center mb-12 text-slate-900 dark:text-white">What's Inside?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {features.map((feature, index) => (
               <motion.div
@@ -182,20 +182,20 @@ const EbookPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-slate-50 border border-slate-200 p-8 rounded-2xl hover:shadow-lg transition-all"
+                className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-2xl hover:shadow-lg transition-all"
               >
-                <div className="w-12 h-12 bg-sky-100 rounded-xl flex items-center justify-center mb-6">
-                  <feature.icon className="w-6 h-6 text-sky-600" />
+                <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 rounded-xl flex items-center justify-center mb-6">
+                  <feature.icon className="w-6 h-6 text-sky-600 dark:text-sky-400" />
                 </div>
-                <h3 className="text-xl font-bold mb-3 text-slate-900">{feature.title}</h3>
-                <p className="text-slate-600 leading-relaxed">{feature.description}</p>
+                <h3 className="text-xl font-bold mb-3 text-slate-900 dark:text-white">{feature.title}</h3>
+                <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
           </div>
         </div>
 
         {/* Massive ROI Section */}
-        <div className="mb-24 bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl relative overflow-hidden">
+        <div className="mb-24 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-black dark:to-slate-900 rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/20 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
           
           <h2 className="text-3xl font-bold text-center mb-2 relative z-10">Massive ROI</h2>
@@ -223,7 +223,8 @@ const EbookPage = () => {
 
             <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 text-center">
               <div className="text-sm text-sky-300 font-bold mb-2 uppercase tracking-wider">Your Price Today</div>
-              <div className="text-6xl font-black text-white mb-2">₹200</div>
+              <div className="text-6xl font-black text-white mb-2">20</div>
+              <div className="text-xl font-bold text-sky-300 mb-2">Credits</div>
               <div className="text-slate-400 line-through text-lg mb-8">₹10,000</div>
               
               <button 
@@ -243,7 +244,7 @@ const EbookPage = () => {
 
         {/* Testimonials Masonry */}
         <div className="mb-24">
-          <h2 className="text-3xl font-bold text-center mb-12 text-slate-900">Trusted by 1,000+ Creators</h2>
+          <h2 className="text-3xl font-bold text-center mb-12 text-slate-900 dark:text-white">Trusted by 1,000+ Creators</h2>
           <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
             {testimonials.map((t, i) => (
               <motion.div
@@ -251,18 +252,18 @@ const EbookPage = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm break-inside-avoid hover:shadow-md transition-shadow"
+                className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm break-inside-avoid hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
                     {t.name[0]}
                   </div>
                   <div>
-                    <div className="font-bold text-slate-900">{t.name}</div>
-                    <div className="text-xs text-slate-500">{t.role}</div>
+                    <div className="font-bold text-slate-900 dark:text-white">{t.name}</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">{t.role}</div>
                   </div>
                 </div>
-                <p className="text-slate-600 text-sm leading-relaxed">"{t.content}"</p>
+                <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">"{t.content}"</p>
               </motion.div>
             ))}
           </div>
@@ -270,15 +271,15 @@ const EbookPage = () => {
 
         {/* FAQ Section */}
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-10 text-slate-900">Frequently Asked Questions</h2>
+          <h2 className="text-3xl font-bold text-center mb-10 text-slate-900 dark:text-white">Frequently Asked Questions</h2>
           <div className="space-y-4">
             {faqs.map((faq, index) => (
-              <div key={index} className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+              <div key={index} className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
                 <button
                   onClick={() => toggleFaq(index)}
-                  className="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-slate-50 transition-colors"
+                  className="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
-                  <span className="font-bold text-slate-800">{faq.question}</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{faq.question}</span>
                   {openFaqIndex === index ? (
                     <ChevronUp className="w-5 h-5 text-sky-500" />
                   ) : (
@@ -286,7 +287,7 @@ const EbookPage = () => {
                   )}
                 </button>
                 {openFaqIndex === index && (
-                  <div className="px-6 py-4 text-slate-600 border-t border-slate-100 bg-slate-50/50 leading-relaxed">
+                  <div className="px-6 py-4 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 leading-relaxed">
                     {faq.answer}
                   </div>
                 )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Lock, Search, Trash2, AlertTriangle, Check, RefreshCw, DollarSign, Clock } from 'lucide-react';
+import { Shield, Lock, Search, Trash2, AlertTriangle, Check, RefreshCw, DollarSign, Clock, List, Plus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Prompt, PayoutRequest } from '../types';
 
@@ -9,7 +9,7 @@ export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'prompts' | 'payouts'>('prompts');
+  const [activeTab, setActiveTab] = useState<'prompts' | 'payouts' | 'categories'>('prompts');
   
   // Prompts State
   const [searchId, setSearchId] = useState('');
@@ -20,6 +20,11 @@ export default function Admin() {
   // Payouts State
   const [payouts, setPayouts] = useState<PayoutRequest[]>([]);
   const [loadingPayouts, setLoadingPayouts] = useState(false);
+
+  // Categories State
+  const [categories, setCategories] = useState<{id: string, name: string}[]>([]);
+  const [newCategory, setNewCategory] = useState('');
+  const [loadingCategories, setLoadingCategories] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +37,50 @@ export default function Admin() {
     }
   };
 
+  // --- Categories Logic ---
+  const fetchCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      const { data, error } = await supabase.from('categories').select('*').order('name');
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (err) {
+      console.error("Error fetching categories", err);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategory.trim()) return;
+
+    try {
+      const { error } = await supabase.from('categories').insert({ name: newCategory.trim() });
+      if (error) throw error;
+      
+      setNewCategory('');
+      fetchCategories();
+      alert('Category added!');
+    } catch (err: any) {
+      alert('Error adding category: ' + err.message);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string, name: string) => {
+    if (!confirm(`Delete category "${name}"?`)) return;
+
+    try {
+      const { error } = await supabase.from('categories').delete().eq('id', id);
+      if (error) throw error;
+      
+      fetchCategories();
+    } catch (err: any) {
+      alert('Error deleting category: ' + err.message);
+    }
+  };
+
+  // --- Payouts Logic ---
   const fetchPayouts = async () => {
     setLoadingPayouts(true);
     try {
@@ -39,7 +88,7 @@ export default function Admin() {
         .from('payout_requests')
         .select(`
           *,
-          profiles:creator_id (display_name, email)
+          profiles:creator_id (display_name)
         `)
         .order('created_at', { ascending: false });
 
@@ -48,7 +97,7 @@ export default function Admin() {
       // Transform to flatten profile info
       const formatted = (data || []).map((p: any) => ({
         ...p,
-        creator_name: p.profiles?.display_name || p.profiles?.email || 'Unknown'
+        creator_name: p.profiles?.display_name || 'Unknown'
       }));
 
       setPayouts(formatted);
@@ -76,6 +125,7 @@ export default function Admin() {
     }
   };
 
+  // --- Prompts Logic ---
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchId.trim()) return;
@@ -120,7 +170,7 @@ export default function Admin() {
           author: p.credit_name || 'Admin',
           category: p.category,
           likes: p.likes_count || 0,
-          image: imagesList[0] || p.image || 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800?text=No+Image',
+          image: imagesList[0] || p.image || 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800?text=No+Image',
           images: imagesList,
           monetization_url: p.monetization_url
         };
@@ -221,10 +271,10 @@ export default function Admin() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-4 mb-8 border-b border-gray-200 dark:border-slate-800">
+        <div className="flex gap-4 mb-8 border-b border-gray-200 dark:border-slate-800 overflow-x-auto">
           <button
             onClick={() => setActiveTab('prompts')}
-            className={`pb-4 px-4 font-bold text-sm transition-colors relative ${
+            className={`pb-4 px-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
               activeTab === 'prompts' 
                 ? 'text-sky-500' 
                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -235,7 +285,7 @@ export default function Admin() {
           </button>
           <button
             onClick={() => { setActiveTab('payouts'); fetchPayouts(); }}
-            className={`pb-4 px-4 font-bold text-sm transition-colors relative ${
+            className={`pb-4 px-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
               activeTab === 'payouts' 
                 ? 'text-sky-500' 
                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
@@ -244,9 +294,21 @@ export default function Admin() {
             Payout Requests
             {activeTab === 'payouts' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500" />}
           </button>
+          <button
+            onClick={() => { setActiveTab('categories'); fetchCategories(); }}
+            className={`pb-4 px-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
+              activeTab === 'categories' 
+                ? 'text-sky-500' 
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            Manage Categories
+            {activeTab === 'categories' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500" />}
+          </button>
         </div>
 
-        {activeTab === 'prompts' ? (
+        {/* --- PROMPTS TAB --- */}
+        {activeTab === 'prompts' && (
           <>
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-800 p-6 mb-8">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Find & Delete Prompts</h2>
@@ -309,7 +371,10 @@ export default function Admin() {
               ))}
             </div>
           </>
-        ) : (
+        )}
+
+        {/* --- PAYOUTS TAB --- */}
+        {activeTab === 'payouts' && (
           <div className="space-y-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white">Withdrawal Requests</h2>
@@ -358,6 +423,57 @@ export default function Admin() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* --- CATEGORIES TAB --- */}
+        {activeTab === 'categories' && (
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-800 p-6 mb-8">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Add New Category</h2>
+              <form onSubmit={handleAddCategory} className="flex gap-4">
+                <input
+                  type="text"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="flex-1 px-4 py-3 border border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none"
+                  placeholder="Category Name (e.g. 'Abstract')"
+                />
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl transition-colors flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add
+                </button>
+              </form>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden">
+              <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
+                <h3 className="font-bold text-slate-900 dark:text-white">Existing Categories</h3>
+                <button onClick={fetchCategories} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full">
+                  <RefreshCw className={`w-4 h-4 ${loadingCategories ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+              
+              <div className="divide-y divide-gray-100 dark:divide-slate-800">
+                {categories.map((cat) => (
+                  <div key={cat.id} className="p-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                    <span className="text-slate-700 dark:text-slate-300 font-medium">{cat.name}</span>
+                    <button
+                      onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {categories.length === 0 && !loadingCategories && (
+                  <div className="p-8 text-center text-slate-500">No categories found.</div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>

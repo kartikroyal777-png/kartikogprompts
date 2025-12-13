@@ -105,7 +105,7 @@ export const About = () => (
               </div>
               <div className="text-right">
                 <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Your Price</div>
-                <div className="text-lg font-bold text-amber-600 dark:text-amber-500">Under ₹200</div>
+                <div className="text-lg font-bold text-amber-600 dark:text-amber-500">20 Credits</div>
               </div>
             </div>
           </div>

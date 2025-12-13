@@ -68,7 +68,7 @@ const Profile = () => {
                 return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
             });
 
-        let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+        let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
         if (imagesList.length > 0) imageUrl = imagesList[0];
         else if (p.image) imageUrl = p.image;
 
@@ -184,10 +184,10 @@ const Profile = () => {
   const showCreatorTools = profile.role === 'creator' || isAdmin || earnedCredits > 0;
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 pt-24 pb-12 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white pt-24 pb-12 transition-colors duration-300">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Profile Header */}
-        <div className="bg-slate-50 rounded-3xl p-8 mb-12 border border-slate-200 shadow-sm">
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl p-8 mb-12 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex flex-col md:flex-row items-center gap-10">
             <div className="w-28 h-28 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-4xl font-bold text-white shadow-lg shadow-sky-500/20">
               {profile.avatar_url ? (
@@ -199,20 +199,20 @@ const Profile = () => {
             
             <div className="flex-1 text-center md:text-left space-y-4">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 mb-1 flex items-center justify-center md:justify-start gap-2">
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1 flex items-center justify-center md:justify-start gap-2">
                   {isAdmin ? 'Admin' : (profile.full_name || 'User')}
                   {profile.creator_badge && <Sparkles className="w-5 h-5 text-purple-500 fill-purple-500/20" />}
                 </h1>
-                <p className="text-slate-500 font-medium">{user.email}</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium">{user.email}</p>
               </div>
               
               {/* Wallet Stats */}
               <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                <div className="bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-sm">
+                <div className="bg-white dark:bg-slate-800 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                   <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Balance</div>
                   <div className="flex items-center gap-2">
                     <Wallet className="w-5 h-5 text-purple-500" />
-                    <span className="font-bold text-lg text-slate-900">{totalCredits}</span>
+                    <span className="font-bold text-lg text-slate-900 dark:text-white">{totalCredits}</span>
                   </div>
                 </div>
 
@@ -220,39 +220,39 @@ const Profile = () => {
                   <>
                     <button 
                       onClick={() => setShowEarningsModal(true)}
-                      className="bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-sm hover:border-green-300 transition-colors group text-left"
+                      className="bg-white dark:bg-slate-800 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-green-300 dark:hover:border-green-700 transition-colors group text-left"
                     >
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-green-600">Earned Credits</div>
+                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-green-600 dark:group-hover:text-green-400">Earned Credits</div>
                       <div className="flex items-center gap-2">
                         <CreditCard className="w-5 h-5 text-green-500" />
-                        <span className="font-bold text-lg text-slate-900">{earnedCredits}</span>
+                        <span className="font-bold text-lg text-slate-900 dark:text-white">{earnedCredits}</span>
                       </div>
                     </button>
 
                     <button 
                       onClick={() => setShowSubscribersModal(true)}
-                      className="bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-sm hover:border-sky-300 transition-colors group text-left"
+                      className="bg-white dark:bg-slate-800 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-sky-300 dark:hover:border-sky-700 transition-colors group text-left"
                     >
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-sky-600">Subscribers</div>
+                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-sky-600 dark:group-hover:text-sky-400">Subscribers</div>
                       <div className="flex items-center gap-2">
                         <Users className="w-5 h-5 text-sky-500" />
-                        <span className="font-bold text-lg text-slate-900">{subscribers.length}</span>
+                        <span className="font-bold text-lg text-slate-900 dark:text-white">{subscribers.length}</span>
                       </div>
                     </button>
 
-                    <div className="bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="bg-white dark:bg-slate-800 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                       <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Likes</div>
                       <div className="flex items-center gap-2">
                         <Heart className="w-5 h-5 text-red-500" />
-                        <span className="font-bold text-lg text-slate-900">{totalLikes}</span>
+                        <span className="font-bold text-lg text-slate-900 dark:text-white">{totalLikes}</span>
                       </div>
                     </div>
 
-                    <div className="bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="bg-white dark:bg-slate-800 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                       <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">USD Wallet</div>
                       <div className="flex items-center gap-2">
                         <DollarSign className="w-5 h-5 text-green-600" />
-                        <span className="font-bold text-lg text-slate-900">${profile.usd_balance || 0}</span>
+                        <span className="font-bold text-lg text-slate-900 dark:text-white">${profile.usd_balance || 0}</span>
                       </div>
                     </div>
                   </>
@@ -265,7 +265,7 @@ const Profile = () => {
                   <button
                     onClick={handleConvertCredits}
                     disabled={earnedCredits < 15 || converting}
-                    className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-slate-900/10 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-gray-200 text-white dark:text-slate-900 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-slate-900/10 dark:shadow-white/10 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <RefreshCw className={`w-4 h-4 ${converting ? 'animate-spin' : ''}`} />
                     Convert 15 Credits to $1
@@ -286,7 +286,7 @@ const Profile = () => {
               <Link to="/buy-credits" className="bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-sky-500/20 text-center">
                 Buy Credits
               </Link>
-              <button onClick={handleSignOut} className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2">
+              <button onClick={handleSignOut} className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2">
                 <LogOut className="w-4 h-4" />
                 Sign Out
               </button>
@@ -295,11 +295,11 @@ const Profile = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-200 mb-8">
+        <div className="flex border-b border-slate-200 dark:border-slate-800 mb-8">
           <button
             onClick={() => setActiveTab('prompts')}
             className={`px-8 py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors ${
-              activeTab === 'prompts' ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+              activeTab === 'prompts' ? 'border-sky-500 text-sky-600 dark:text-sky-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             <ImageIcon className="w-4 h-4" />
@@ -308,7 +308,7 @@ const Profile = () => {
           <button
             onClick={() => setActiveTab('settings')}
             className={`px-8 py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors ${
-              activeTab === 'settings' ? 'border-sky-500 text-sky-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+              activeTab === 'settings' ? 'border-sky-500 text-sky-600 dark:text-sky-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             <Settings className="w-4 h-4" />
@@ -329,9 +329,9 @@ const Profile = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-center text-slate-400 py-16 bg-slate-50 rounded-3xl border border-slate-100">
-                  <ImageIcon className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                  <p className="text-lg font-medium text-slate-600">You haven't uploaded any prompts yet.</p>
+                <div className="text-center text-slate-400 py-16 bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800">
+                  <ImageIcon className="w-16 h-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
+                  <p className="text-lg font-medium text-slate-600 dark:text-slate-400">You haven't uploaded any prompts yet.</p>
                   <Link to="/upload" className="text-sky-500 hover:text-sky-600 font-bold mt-2 inline-block">
                     Upload your first prompt
                   </Link>
@@ -341,28 +341,28 @@ const Profile = () => {
           )}
           
           {activeTab === 'settings' && (
-            <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm max-w-2xl">
-              <h3 className="text-xl font-bold text-slate-900 mb-6">Account Settings</h3>
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm max-w-2xl">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Account Settings</h3>
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-bold text-slate-500 mb-2">Email Address</label>
-                  <input type="text" value={user.email} disabled className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-500 cursor-not-allowed font-medium" />
+                  <label className="block text-sm font-bold text-slate-500 dark:text-slate-400 mb-2">Email Address</label>
+                  <input type="text" value={user.email} disabled className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-500 dark:text-slate-400 cursor-not-allowed font-medium" />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Display Name</label>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Display Name</label>
                   <input 
                     type="text" 
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     disabled={isAdmin}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent font-medium disabled:bg-slate-50 disabled:text-slate-500" 
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent font-medium disabled:bg-slate-50 disabled:text-slate-500" 
                   />
                   {isAdmin && <p className="text-xs text-red-500 mt-1">Admin name cannot be changed.</p>}
                 </div>
                 <button 
                   onClick={handleSaveProfile}
                   disabled={savingProfile || isAdmin}
-                  className="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-slate-800 transition-all disabled:opacity-50"
+                  className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-3 rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-gray-200 transition-all disabled:opacity-50"
                 >
                   {savingProfile ? 'Saving...' : 'Save Changes'}
                 </button>

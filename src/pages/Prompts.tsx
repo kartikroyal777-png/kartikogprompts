@@ -1,21 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Filter, Lock, Sparkles } from 'lucide-react';
 import PromptCard from '../components/PromptCard';
-import { Category, Prompt } from '../types';
+import { Prompt } from '../types';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 
-const CATEGORIES: Category[] = ['All', 'Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape'];
-
 const Prompts = () => {
-  const [activeCategory, setActiveCategory] = useState<Category>('All');
+  const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [categories, setCategories] = useState<string[]>(['All']);
   const [loading, setLoading] = useState(true);
+  const [showPremiumOnly, setShowPremiumOnly] = useState(false);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     fetchPrompts();
-  }, [activeCategory]);
+  }, [activeCategory, showPremiumOnly]);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase.from('categories').select('name').order('name');
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setCategories(['All', ...data.map(c => c.name)]);
+      } else {
+        // Fallback defaults if DB is empty
+        setCategories(['All', 'Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape']);
+      }
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+      setCategories(['All', 'Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape']);
+    }
+  };
 
   const fetchPrompts = async () => {
     setLoading(true);
@@ -33,6 +53,10 @@ const Prompts = () => {
         query = query.eq('category', activeCategory);
       }
 
+      if (showPremiumOnly) {
+        query = query.eq('is_paid', true);
+      }
+
       const { data, error } = await query;
 
       if (error) throw error;
@@ -47,7 +71,7 @@ const Prompts = () => {
               return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
             });
 
-         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
          if (imagesList.length > 0) {
              imageUrl = imagesList[0];
          } else if (p.image) {
@@ -57,7 +81,6 @@ const Prompts = () => {
         return {
           id: p.id,
           short_id: p.short_id,
-          // Use short_id for display if available
           promptId: p.short_id ? p.short_id.toString() : p.id.substring(0, 5),
           title: p.title,
           description: p.description,
@@ -66,7 +89,11 @@ const Prompts = () => {
           likes: p.likes_count || 0,
           image: imageUrl,
           images: imagesList,
-          monetization_url: p.monetization_url
+          monetization_url: p.monetization_url,
+          is_paid: p.is_paid,
+          price_credits: p.price_credits,
+          is_bundle: p.is_bundle,
+          creator_id: p.creator_id
         };
       });
 
@@ -103,27 +130,50 @@ const Prompts = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap justify-center gap-2 mb-12">
-          {CATEGORIES.map((category) => (
-            <button
-              key={category}
-              onClick={() => setActiveCategory(category)}
-              className={cn(
-                "px-6 py-2 rounded-full text-sm font-medium transition-all",
-                activeCategory === category
-                  ? "bg-sky-500 text-white shadow-md"
-                  : "bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800"
-              )}
-            >
-              {category}
-            </button>
-          ))}
+        {/* Filters & Categories */}
+        <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-12">
+           {/* Premium Filter Button */}
+           <button
+            onClick={() => setShowPremiumOnly(!showPremiumOnly)}
+            className={cn(
+              "flex items-center gap-2 px-6 py-2 rounded-full text-sm font-bold transition-all border shadow-sm",
+              showPremiumOnly
+                ? "bg-amber-500 text-white border-amber-500 shadow-amber-500/25"
+                : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-gray-200 dark:border-slate-800 hover:border-amber-500 dark:hover:border-amber-500 hover:text-amber-600 dark:hover:text-amber-400"
+            )}
+          >
+            {showPremiumOnly ? <Lock className="w-4 h-4 fill-current" /> : <Lock className="w-4 h-4" />}
+            {showPremiumOnly ? 'Premium Only' : 'Premium Filter'}
+          </button>
+
+          <div className="h-8 w-px bg-gray-200 dark:bg-slate-800 hidden md:block"></div>
+
+          {/* Categories */}
+          <div className="flex flex-wrap justify-center gap-2">
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setActiveCategory(category)}
+                className={cn(
+                  "px-5 py-2 rounded-full text-sm font-medium transition-all border",
+                  activeCategory === category
+                    ? "bg-sky-500 text-white border-sky-500 shadow-md shadow-sky-500/20"
+                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-gray-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
+                )}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Grid */}
         {loading ? (
-          <div className="text-center py-20 text-slate-400">Loading prompts...</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="aspect-[4/5] bg-gray-100 dark:bg-slate-900 rounded-2xl animate-pulse border border-gray-200 dark:border-slate-800" />
+            ))}
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredPrompts.map((prompt) => (
@@ -133,8 +183,17 @@ const Prompts = () => {
         )}
 
         {!loading && filteredPrompts.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-slate-500 dark:text-slate-400 text-lg">No prompts found.</p>
+          <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 mb-4">
+              <Sparkles className="w-8 h-8 text-slate-400" />
+            </div>
+            <p className="text-slate-500 dark:text-slate-400 text-lg font-medium">No prompts found matching your criteria.</p>
+            <button 
+              onClick={() => {setSearchQuery(''); setActiveCategory('All'); setShowPremiumOnly(false);}}
+              className="mt-4 text-sky-500 hover:text-sky-600 font-bold text-sm"
+            >
+              Clear all filters
+            </button>
           </div>
         )}
       </div>

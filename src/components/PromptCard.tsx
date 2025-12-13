@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Instagram, Lock } from 'lucide-react';
+import { Heart, Instagram, Lock, Layers } from 'lucide-react';
 import { Prompt } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -67,32 +67,36 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, onLikeToggle }) => {
       
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity pointer-events-none" />
 
-      {/* Premium Badge */}
-      {prompt.is_paid && (
-        <div className="absolute top-4 right-4 z-20">
-          <div className="bg-amber-500/90 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-lg border border-white/20">
+      {/* Badges Container - Top Left */}
+      <div className="absolute top-3 left-3 z-20 flex flex-col gap-2 items-start pointer-events-none">
+        {/* Premium Badge */}
+        {prompt.is_paid && (
+          <div className="bg-amber-500/90 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg border border-white/20">
             <Lock className="w-3 h-3" />
             {prompt.price_credits} Credits
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Bundle Badge */}
-      {prompt.images && prompt.images.length > 1 && (
-        <div className="absolute top-4 left-4 z-20">
-          <div className="bg-purple-500/90 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-lg border border-white/20">
-            <span className="text-xs">📚</span>
+        {/* Bundle Badge */}
+        {prompt.images && prompt.images.length > 1 && (
+          <div className="bg-purple-500/90 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-lg border border-white/20">
+            <Layers className="w-3 h-3" />
             Bundle
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      <div className="absolute inset-0 p-4 flex flex-col justify-between pointer-events-none">
-        <div className="flex justify-between items-start pointer-events-auto">
-          <div className="bg-black/40 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10">
-            <span className="text-[10px] font-bold text-white/90 tracking-wider">ID: {prompt.promptId}</span>
+      {/* ID Badge - Bottom Right of Image Area */}
+      <div className="absolute bottom-3 right-3 z-20 pointer-events-none">
+         <div className="bg-black/40 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-mono font-medium text-white/80 border border-white/10">
+            ID: {prompt.promptId}
           </div>
-          
+      </div>
+
+      {/* Footer Content */}
+      <div className="absolute inset-0 p-4 flex flex-col justify-between pointer-events-none">
+        <div className="flex justify-end items-start pointer-events-auto">
+          {/* Like Button */}
           <div className="flex items-center gap-1.5">
             <motion.button 
               whileTap={{ scale: 0.8 }}
@@ -110,13 +114,13 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, onLikeToggle }) => {
           </div>
         </div>
 
-        <div className="space-y-2 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-          <span className="inline-block px-3 py-1 bg-sky-500/90 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg shadow-sky-500/20">
+        <div className="space-y-1.5 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+          <span className="inline-block px-2.5 py-0.5 bg-sky-500/90 backdrop-blur-sm text-white text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg shadow-sky-500/20">
             {prompt.category}
           </span>
           
-          <div className="pointer-events-auto">
-            <h3 className="text-lg font-bold text-white mb-1 line-clamp-1 leading-tight">{prompt.title}</h3>
+          <div className="pointer-events-auto pr-12"> {/* Added padding-right to avoid overlap with ID badge if text is long */}
+            <h3 className="text-lg font-bold text-white mb-0.5 line-clamp-1 leading-tight">{prompt.title}</h3>
             <div 
               className="flex items-center gap-1.5 text-gray-300 text-xs hover:text-white transition-colors w-fit"
               onClick={handleAuthorClick}

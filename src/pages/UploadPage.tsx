@@ -2,12 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, Image as ImageIcon, X, Loader2, Coins, Layers } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Category } from '../types';
 import imageCompression from 'browser-image-compression';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
-
-const CATEGORIES: Category[] = ['Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape'];
 
 const UploadPage = () => {
   const { user, profile } = useAuth();
@@ -16,6 +13,7 @@ const UploadPage = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [categories, setCategories] = useState<string[]>([]);
   
   // Dynamic prompts for bundles
   const [promptTexts, setPromptTexts] = useState<string[]>(['']);
@@ -38,7 +36,28 @@ const UploadPage = () => {
     if (profile && !profile.creator_badge) {
       navigate('/become-creator');
     }
+    fetchCategories();
   }, [profile]);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase.from('categories').select('name').order('name');
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setCategories(data.map(c => c.name));
+        // Set default category if not set or invalid
+        if (!data.map(c => c.name).includes(formData.category)) {
+          setFormData(prev => ({ ...prev, category: data[0].name }));
+        }
+      } else {
+        // Fallback
+        setCategories(['Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape']);
+      }
+    } catch (err) {
+      console.error("Error fetching categories", err);
+      setCategories(['Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape']);
+    }
+  };
 
   // Cleanup previews
   useEffect(() => {
@@ -288,7 +307,7 @@ const UploadPage = () => {
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none"
               >
-                {CATEGORIES.map(cat => (
+                {categories.map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>

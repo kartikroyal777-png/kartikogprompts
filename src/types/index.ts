@@ -19,6 +19,7 @@ export interface Prompt {
   is_paid?: boolean;
   price_credits?: number;
   is_unlocked?: boolean;
+  is_bundle?: boolean;
 }
 
 export type Category = 'All' | 'Couple' | 'Kids' | 'Men' | 'Women' | 'Animals' | 'Landscape';
@@ -44,6 +45,7 @@ export interface CreatorProfile {
   website?: string;
   full_access_price_credits: number;
   created_at: string;
+  usd_balance?: number;
 }
 
 export interface Wallet {

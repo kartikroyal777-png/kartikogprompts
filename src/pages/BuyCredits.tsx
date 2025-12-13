@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Coins, Check, Zap, ShieldCheck } from 'lucide-react';
+import { Coins, Check, Zap, ShieldCheck, Gift, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,10 @@ export default function BuyCredits() {
   const { user, wallet, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState<typeof PLANS[0] | null>(null);
+  
+  // Coupon State
+  const [couponCode, setCouponCode] = useState('');
+  const [redeeming, setRedeeming] = useState(false);
 
   const handlePurchaseClick = (plan: typeof PLANS[0]) => {
     if (!user) {
@@ -36,11 +40,38 @@ export default function BuyCredits() {
       
       await refreshProfile();
       setSelectedPlan(null);
-      // alert(`Successfully added ${selectedPlan.credits} credits!`);
-      // navigate('/profile'); // Optional: redirect or stay
     } catch (error: any) {
       console.error("Purchase failed", error);
       alert("Purchase failed: " + error.message);
+    }
+  };
+
+  const handleRedeemCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    if (!couponCode.trim()) return;
+
+    setRedeeming(true);
+    try {
+      // Check for specific code
+      if (couponCode.trim() === 'OGDUO7740') {
+        const { error } = await supabase.rpc('simulate_topup', { p_amount_credits: 10 });
+        if (error) throw error;
+        
+        await refreshProfile();
+        alert("Coupon Redeemed! 10 Credits added to your wallet.");
+        setCouponCode('');
+      } else {
+        alert("Invalid coupon code.");
+      }
+    } catch (error: any) {
+      console.error("Redemption failed", error);
+      alert("Redemption failed: " + error.message);
+    } finally {
+      setRedeeming(false);
     }
   };
 
@@ -62,7 +93,7 @@ export default function BuyCredits() {
           )}
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-8 mb-16">
           {PLANS.map((plan) => (
             <div 
               key={plan.id}
@@ -118,6 +149,36 @@ export default function BuyCredits() {
               </button>
             </div>
           ))}
+        </div>
+
+        {/* Coupon Section */}
+        <div className="max-w-md mx-auto bg-white dark:bg-slate-900 rounded-2xl p-6 border border-gray-200 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
+              <Gift className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white">Have a Coupon Code?</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Enter your code to get free credits.</p>
+            </div>
+          </div>
+          
+          <form onSubmit={handleRedeemCoupon} className="flex gap-2">
+            <input
+              type="text"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value)}
+              placeholder="Enter code..."
+              className="flex-1 px-4 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
+            />
+            <button
+              type="submit"
+              disabled={redeeming || !couponCode.trim()}
+              className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {redeeming ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Redeem'}
+            </button>
+          </form>
         </div>
 
         <div className="mt-16 text-center">

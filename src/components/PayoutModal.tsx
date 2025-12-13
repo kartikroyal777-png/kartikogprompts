@@ -1,20 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { X, DollarSign, Wallet, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
+import { X, DollarSign, Wallet, AlertCircle, Loader2, CheckCircle, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 
 interface PayoutModalProps {
   isOpen: boolean;
   onClose: () => void;
-  availableCredits: number;
+  availableUsd: number;
   onSuccess: () => void;
 }
 
-const MIN_CREDITS = 120; // $10
-const RATE = 12; // 12 credits = $1
+const MIN_WITHDRAWAL_USD = 10;
 
-export default function PayoutModal({ isOpen, onClose, availableCredits, onSuccess }: PayoutModalProps) {
-  const [amount, setAmount] = useState<number>(MIN_CREDITS);
+export default function PayoutModal({ isOpen, onClose, availableUsd, onSuccess }: PayoutModalProps) {
+  const [amount, setAmount] = useState<number>(MIN_WITHDRAWAL_USD);
   const [details, setDetails] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,25 +22,23 @@ export default function PayoutModal({ isOpen, onClose, availableCredits, onSucce
   useEffect(() => {
     if (isOpen) {
       setStep('input');
-      setAmount(Math.max(MIN_CREDITS, Math.min(availableCredits, 1200))); // Default suggestion
+      setAmount(Math.max(MIN_WITHDRAWAL_USD, Math.min(availableUsd, 100))); // Default suggestion
       setError(null);
     }
-  }, [isOpen, availableCredits]);
+  }, [isOpen, availableUsd]);
 
   if (!isOpen) return null;
-
-  const usdValue = (amount / RATE).toFixed(2);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (amount < MIN_CREDITS) {
-      setError(`Minimum withdrawal is ${MIN_CREDITS} credits ($10).`);
+    if (amount < MIN_WITHDRAWAL_USD) {
+      setError(`Minimum withdrawal is $${MIN_WITHDRAWAL_USD}.`);
       return;
     }
-    if (amount > availableCredits) {
-      setError("Insufficient available credits.");
+    if (amount > availableUsd) {
+      setError("Insufficient USD balance.");
       return;
     }
     if (!details.trim()) {
@@ -51,8 +48,8 @@ export default function PayoutModal({ isOpen, onClose, availableCredits, onSucce
 
     setLoading(true);
     try {
-      const { error } = await supabase.rpc('request_payout', {
-        p_credits: amount,
+      const { error } = await supabase.rpc('request_usd_payout', {
+        p_amount_usd: amount,
         p_details: details
       });
 
@@ -78,8 +75,8 @@ export default function PayoutModal({ isOpen, onClose, availableCredits, onSucce
         >
           <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-slate-800">
             <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Wallet className="w-5 h-5 text-sky-500" />
-              Request Payout
+              <Wallet className="w-5 h-5 text-green-500" />
+              Withdraw Funds
             </h3>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
               <X className="w-5 h-5" />
@@ -89,37 +86,32 @@ export default function PayoutModal({ isOpen, onClose, availableCredits, onSucce
           <div className="p-6">
             {step === 'input' ? (
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="bg-sky-50 dark:bg-sky-900/10 p-4 rounded-xl border border-sky-100 dark:border-sky-900/30 flex justify-between items-center">
+                <div className="bg-green-50 dark:bg-green-900/10 p-4 rounded-xl border border-green-100 dark:border-green-900/30 flex justify-between items-center">
                   <div>
-                    <p className="text-xs text-sky-600 dark:text-sky-400 font-bold uppercase tracking-wider mb-1">Available Balance</p>
-                    <p className="text-2xl font-black text-slate-900 dark:text-white">{availableCredits} Credits</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Est. Value</p>
-                    <p className="text-lg font-bold text-green-600 dark:text-green-500">${(availableCredits / RATE).toFixed(2)}</p>
+                    <p className="text-xs text-green-600 dark:text-green-400 font-bold uppercase tracking-wider mb-1">Available USD</p>
+                    <p className="text-2xl font-black text-slate-900 dark:text-white">${availableUsd.toFixed(2)}</p>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                    Withdrawal Amount (Credits)
+                    Withdrawal Amount ($)
                   </label>
                   <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
                     <input
                       type="number"
-                      min={MIN_CREDITS}
-                      max={availableCredits}
+                      min={MIN_WITHDRAWAL_USD}
+                      max={availableUsd}
+                      step="0.01"
                       value={amount}
                       onChange={(e) => setAmount(Number(e.target.value))}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none font-bold text-lg"
+                      className="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-green-500 outline-none font-bold text-lg"
                     />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">
-                      = ${usdValue} USD
-                    </div>
                   </div>
                   <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" />
-                    Minimum withdrawal: {MIN_CREDITS} credits ($10)
+                    Minimum withdrawal: ${MIN_WITHDRAWAL_USD}
                   </p>
                 </div>
 
@@ -132,7 +124,7 @@ export default function PayoutModal({ isOpen, onClose, availableCredits, onSucce
                     rows={2}
                     value={details}
                     onChange={(e) => setDetails(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none text-sm"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-green-500 outline-none text-sm"
                     placeholder="e.g. PayPal: email@example.com or UPI: user@upi"
                   />
                 </div>
@@ -146,12 +138,12 @@ export default function PayoutModal({ isOpen, onClose, availableCredits, onSucce
 
                 <button
                   type="submit"
-                  disabled={loading || availableCredits < MIN_CREDITS}
-                  className="w-full py-4 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-xl shadow-lg shadow-sky-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled={loading || availableUsd < MIN_WITHDRAWAL_USD}
+                  className="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                     <>
-                      Request ${usdValue} Payout
+                      Withdraw Funds
                       <DollarSign className="w-4 h-4" />
                     </>
                   )}
@@ -164,7 +156,7 @@ export default function PayoutModal({ isOpen, onClose, availableCredits, onSucce
                 </div>
                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Request Sent!</h3>
                 <p className="text-slate-500 dark:text-slate-400 mb-6">
-                  Your payout request for <strong>{amount} Credits</strong> (${usdValue}) has been submitted.
+                  Your payout request for <strong>${amount.toFixed(2)}</strong> has been submitted.
                   <br />Processing typically takes 2-3 business days.
                 </p>
                 <button

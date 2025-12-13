@@ -120,6 +120,14 @@ const UploadPage = () => {
       return;
     }
 
+    // Validate Price
+    if (formData.is_paid) {
+      if (formData.price_credits < 0.5 || formData.price_credits > 10) {
+        alert("Premium prompt price must be between 0.5 and 10 credits.");
+        return;
+      }
+    }
+
     setLoading(true);
     setUploadProgress(0);
 
@@ -151,7 +159,7 @@ const UploadPage = () => {
       if (promptError) throw promptError;
 
       // 2. Insert Content (Secure)
-      if (formData.is_paid) {
+      if (formData.is_paid || formData.is_bundle) {
         const bundleData = promptTexts.map((text, idx) => ({ index: idx, text }));
         
         const { error: contentError } = await supabase
@@ -162,7 +170,11 @@ const UploadPage = () => {
             bundle_data: bundleData // All texts
           });
           
-        if (contentError) throw contentError;
+        if (contentError) {
+            // If content insert fails, try to clean up prompt
+            await supabase.from('prompts').delete().eq('id', prompt.id);
+            throw contentError;
+        }
       }
 
       // 3. Upload Images
@@ -306,13 +318,14 @@ const UploadPage = () => {
                 <label className="block text-xs font-medium text-amber-800 dark:text-amber-400 mb-1">Price (Credits)</label>
                 <input
                   type="number"
-                  min="0.1"
-                  max="1.0"
-                  step="0.1"
+                  min="0.5"
+                  max="10"
+                  step="0.5"
                   value={formData.price_credits}
                   onChange={e => setFormData({...formData, price_credits: parseFloat(e.target.value)})}
                   className="w-full px-4 py-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
                 />
+                <p className="text-xs text-amber-600/70 dark:text-amber-400/70 mt-1">Min: 0.5, Max: 10 Credits</p>
               </div>
             )}
           </div>

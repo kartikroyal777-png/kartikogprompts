@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Heart, Share2, Copy, Check, Instagram, ArrowLeft, ExternalLink, Video, Lock, Unlock, Sparkles } from 'lucide-react';
+import { Heart, Share2, Copy, Check, Instagram, ArrowLeft, ExternalLink, Video, Lock, Unlock, Sparkles, Layers } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Prompt } from '../types';
 import { getIsLiked, toggleLike } from '../lib/likes';
@@ -11,6 +11,11 @@ import { useAuth } from '../context/AuthContext';
 import UnlockModal from '../components/UnlockModal';
 import AuthModal from '../components/AuthModal';
 
+interface BundleItem {
+  index: number;
+  text: string;
+}
+
 const PromptDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -18,8 +23,10 @@ const PromptDetail = () => {
   
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [fullText, setFullText] = useState<string | null>(null);
+  const [bundleData, setBundleData] = useState<BundleItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [videoCopied, setVideoCopied] = useState(false);
   const [likes, setLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
@@ -81,16 +88,18 @@ const PromptDetail = () => {
 
       // 3. Fetch Full Text (if unlocked)
       let textContent = p.description; // Default to description (preview)
+      let bundleContent: BundleItem[] = [];
       
       if (unlocked) {
         const { data: content } = await supabase
           .from('prompt_contents')
-          .select('full_text')
+          .select('full_text, bundle_data')
           .eq('prompt_id', id)
           .maybeSingle();
           
-        if (content && content.full_text) {
-          textContent = content.full_text;
+        if (content) {
+          if (content.full_text) textContent = content.full_text;
+          if (content.bundle_data) bundleContent = content.bundle_data;
         }
       }
 
@@ -102,7 +111,7 @@ const PromptDetail = () => {
           return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
         });
 
-      let primaryImage = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+      let primaryImage = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
       if (imagesList.length > 0) primaryImage = imagesList[0];
       else if (p.image) primaryImage = p.image;
 
@@ -123,11 +132,13 @@ const PromptDetail = () => {
         monetization_url: p.monetization_url,
         instagram_handle: p.instagram_handle,
         is_paid: p.is_paid,
-        price_credits: p.price_credits
+        price_credits: p.price_credits,
+        is_bundle: p.is_bundle
       };
 
       setPrompt(promptData);
       setFullText(textContent);
+      setBundleData(bundleContent);
       setLikes(promptData.likes);
       setIsLiked(getIsLiked(promptData.id));
     } catch (error) {
@@ -171,11 +182,15 @@ const PromptDetail = () => {
     setIsLiked(newIsLiked);
   };
 
-  const handleCopy = () => {
-    if (!fullText) return;
-    navigator.clipboard.writeText(fullText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = (text: string, index?: number) => {
+    navigator.clipboard.writeText(text);
+    if (index !== undefined) {
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } else {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleVideoCopy = () => {
@@ -229,15 +244,8 @@ const PromptDetail = () => {
           >
             <ImageCarousel images={imagesToDisplay} alt={prompt.title} />
             
-            {/* Locked Overlay on Image if Paid & Locked */}
-            {!isUnlocked && prompt.is_paid && (
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] flex items-center justify-center z-10">
-                <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl text-center">
-                  <Lock className="w-8 h-8 text-white mx-auto mb-2" />
-                  <p className="text-white font-bold">Premium Preview</p>
-                </div>
-              </div>
-            )}
+            {/* REMOVED: Locked Overlay on Image if Paid & Locked */}
+            {/* The user requested to remove the lock overlay so premium images can be previewed */}
           </motion.div>
           
           <div className="flex gap-4">
@@ -282,6 +290,12 @@ const PromptDetail = () => {
                   Premium
                 </span>
               )}
+              {prompt.is_bundle && (
+                <span className="px-4 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-sm font-bold rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1">
+                  <Layers className="w-3 h-3" />
+                  Bundle
+                </span>
+              )}
               <span className="text-slate-400 text-sm font-mono">ID: {prompt.promptId}</span>
             </div>
             
@@ -312,11 +326,11 @@ const PromptDetail = () => {
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                 <span className="w-2 h-2 bg-sky-500 rounded-full animate-pulse"/>
-                Prompt
+                {prompt.is_bundle ? 'Bundle Prompts' : 'Prompt'}
               </h3>
-              {isUnlocked && (
+              {isUnlocked && !prompt.is_bundle && (
                 <button
-                  onClick={handleCopy}
+                  onClick={() => handleCopy(fullText || '')}
                   className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 transition-colors"
                 >
                   {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
@@ -326,37 +340,64 @@ const PromptDetail = () => {
             </div>
             
             <div className="relative">
-              <p className={cn(
-                "text-slate-800 dark:text-slate-200 leading-relaxed text-lg whitespace-pre-wrap font-medium transition-all",
-                !isUnlocked && "blur-md select-none opacity-50"
-              )}>
-                {fullText || "This prompt is locked. Unlock to view the full details."}
-              </p>
-
-              {/* Unlock Overlay */}
-              {!isUnlocked && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center z-10 p-4 text-center">
-                  <Lock className="w-12 h-12 text-slate-400 mb-4" />
-                  
-                  <div className="flex flex-col gap-3 w-full max-w-xs">
-                    <button
-                      onClick={handleUnlockClick}
-                      className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-500/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
-                    >
-                      <Unlock className="w-5 h-5" />
-                      Unlock for {prompt.price_credits} Credits
-                    </button>
+              {!isUnlocked ? (
+                // Locked View
+                <div className="relative">
+                  <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-lg whitespace-pre-wrap font-medium blur-md select-none opacity-50">
+                    {fullText || "This prompt is locked. Unlock to view the full details."}
+                  </p>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center z-10 p-4 text-center">
+                    <Lock className="w-12 h-12 text-slate-400 mb-4" />
                     
-                    {prompt.creator_id && (
-                      <Link
-                        to={`/creator/${prompt.creator_id}`}
-                        className="px-6 py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                    <div className="flex flex-col gap-3 w-full max-w-xs">
+                      <button
+                        onClick={handleUnlockClick}
+                        className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-500/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
                       >
-                        <Sparkles className="w-5 h-5 text-purple-500" />
-                        Unlock All from Creator
-                      </Link>
-                    )}
+                        <Unlock className="w-5 h-5" />
+                        Unlock for {prompt.price_credits} Credits
+                      </button>
+                      
+                      {prompt.creator_id && (
+                        <Link
+                          to={`/creator/${prompt.creator_id}`}
+                          className="px-6 py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                        >
+                          <Sparkles className="w-5 h-5 text-purple-500" />
+                          Unlock All from Creator
+                        </Link>
+                      )}
+                    </div>
                   </div>
+                </div>
+              ) : (
+                // Unlocked View
+                <div>
+                  {prompt.is_bundle && bundleData.length > 0 ? (
+                    <div className="space-y-6">
+                      {bundleData.map((item, idx) => (
+                        <div key={idx} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs font-bold text-slate-500 uppercase">Image {idx + 1}</span>
+                            <button
+                              onClick={() => handleCopy(item.text, idx)}
+                              className="text-xs flex items-center gap-1 text-sky-500 hover:text-sky-600"
+                            >
+                              {copiedIndex === idx ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                              Copy
+                            </button>
+                          </div>
+                          <p className="text-slate-800 dark:text-slate-200 text-sm whitespace-pre-wrap">
+                            {item.text}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-lg whitespace-pre-wrap font-medium">
+                      {fullText}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

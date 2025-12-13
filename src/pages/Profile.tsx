@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Shield, Sparkles, LogOut, Coins, Upload, Settings, CheckCircle, ExternalLink, Wallet, UserCheck, ArrowRight, Camera, Loader2 } from 'lucide-react';
+import { Shield, Sparkles, LogOut, Coins, Upload, Settings, CheckCircle, ExternalLink, Wallet, UserCheck, ArrowRight, Camera, Loader2, RefreshCw, DollarSign } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import AuthModal from '../components/AuthModal';
 import PayoutModal from '../components/PayoutModal';
@@ -24,12 +24,14 @@ export default function Profile() {
   const [creatorStats, setCreatorStats] = useState({ 
     earnings: 0, 
     subscribers: 0,
-    availableBalance: 0 
+    availableBalance: 0,
+    usdBalance: 0
   });
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [subscriptions, setSubscriptions] = useState<SubscribedCreator[]>([]);
   const [myPrompts, setMyPrompts] = useState<Prompt[]>([]);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [converting, setConverting] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -46,13 +48,22 @@ export default function Profile() {
   const fetchCreatorStats = async () => {
     if (!user) return;
     try {
+      // Fetch gross earnings
       const { data: earnings } = await supabase.from('creator_earnings').select('gross_credits').eq('creator_id', user.id);
       const totalEarnings = earnings?.reduce((acc, curr) => acc + (curr.gross_credits || 0), 0) || 0;
 
+      // Fetch available credit balance
       let available = totalEarnings;
       try {
         const { data: balanceData, error } = await supabase.rpc('get_creator_payout_balance', { p_creator_id: user.id });
         if (!error && balanceData !== null) available = balanceData;
+      } catch (e) { console.warn(e); }
+
+      // Fetch USD Balance
+      let usd = 0;
+      try {
+        const { data: creatorData } = await supabase.from('creators').select('usd_balance').eq('id', user.id).single();
+        if (creatorData) usd = creatorData.usd_balance || 0;
       } catch (e) { console.warn(e); }
 
       const { count } = await supabase.from('creator_unlocks').select('*', { count: 'exact', head: true }).eq('creator_id', user.id);
@@ -60,7 +71,8 @@ export default function Profile() {
       setCreatorStats({ 
         earnings: totalEarnings, 
         subscribers: count || 0,
-        availableBalance: Number(available)
+        availableBalance: Number(available),
+        usdBalance: Number(usd)
       });
     } catch (e) { console.error(e); }
   };
@@ -101,7 +113,7 @@ export default function Profile() {
           author: profile?.display_name || 'Me',
           category: p.category,
           likes: p.likes_count || 0,
-          image: imagesList[0] || p.image || 'https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800?text=No+Image',
+          image: imagesList[0] || p.image || 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800?text=No+Image',
           images: imagesList,
           monetization_url: p.monetization_url,
           is_paid: p.is_paid,
@@ -134,6 +146,32 @@ export default function Profile() {
       alert('Error uploading avatar: ' + error.message);
     } finally {
       setUploadingAvatar(false);
+    }
+  };
+
+  const handleConvertCredits = async () => {
+    if (creatorStats.availableBalance < 15) {
+      alert("Minimum 15 credits required for conversion.");
+      return;
+    }
+    
+    // Calculate max convertible (multiples of 15)
+    const convertible = Math.floor(creatorStats.availableBalance / 15) * 15;
+    const usdValue = (convertible / 15).toFixed(2);
+
+    if (!confirm(`Convert ${convertible} credits to $${usdValue} USD?`)) return;
+
+    setConverting(true);
+    try {
+      const { error } = await supabase.rpc('convert_credits_to_usd', { p_credits: convertible });
+      if (error) throw error;
+      
+      await fetchCreatorStats();
+      alert(`Successfully converted ${convertible} credits to $${usdValue}!`);
+    } catch (error: any) {
+      alert("Conversion failed: " + error.message);
+    } finally {
+      setConverting(false);
     }
   };
 
@@ -194,28 +232,47 @@ export default function Profile() {
         {profile?.creator_badge && (
           <>
             <div className="grid md:grid-cols-3 gap-6">
+              {/* Credit Balance */}
               <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-100 dark:border-slate-800">
-                <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Available for Payout</h3>
-                <div className="text-3xl font-bold text-green-600 dark:text-green-500">{creatorStats.availableBalance} <span className="text-sm font-normal text-slate-400">Credits</span></div>
-                <div className="text-xs text-slate-400 mt-1">Lifetime Earnings: {creatorStats.earnings}</div>
+                <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Credit Earnings</h3>
+                <div className="text-3xl font-bold text-slate-900 dark:text-white mb-4">{creatorStats.availableBalance} <span className="text-sm font-normal text-slate-400">Credits</span></div>
+                
+                <button 
+                  onClick={handleConvertCredits}
+                  disabled={converting || creatorStats.availableBalance < 15}
+                  className="w-full py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors disabled:opacity-50"
+                >
+                  {converting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  Convert to USD
+                </button>
+                <p className="text-xs text-slate-400 mt-2 text-center">Rate: 15 Credits = $1.00</p>
               </div>
+
+              {/* USD Balance */}
               <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-100 dark:border-slate-800">
-                <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Subscribers</h3>
-                <div className="text-3xl font-bold text-slate-900 dark:text-white">{creatorStats.subscribers}</div>
-                <div className="text-xs text-slate-400 mt-1">Active Fans</div>
-              </div>
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 flex flex-col justify-center gap-3">
-                <Link to="/upload" className="w-full py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors">
-                  <Upload className="w-4 h-4" />
-                  Sell Prompt
-                </Link>
+                <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">USD Wallet</h3>
+                <div className="text-3xl font-bold text-green-600 dark:text-green-500 mb-4">${creatorStats.usdBalance.toFixed(2)}</div>
+                
                 <button 
                   onClick={() => setShowPayoutModal(true)}
-                  className="w-full py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  className="w-full py-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors"
                 >
-                  <Wallet className="w-4 h-4" />
-                  Request Payout
+                  <DollarSign className="w-4 h-4" />
+                  Withdraw Funds
                 </button>
+                <p className="text-xs text-slate-400 mt-2 text-center">Min Withdrawal: $10.00</p>
+              </div>
+
+              {/* Actions */}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-gray-100 dark:border-slate-800 flex flex-col justify-center gap-3">
+                <div className="mb-2">
+                  <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Subscribers</h3>
+                  <div className="text-2xl font-bold text-slate-900 dark:text-white">{creatorStats.subscribers}</div>
+                </div>
+                <Link to="/upload" className="w-full py-3 bg-sky-500 hover:bg-sky-600 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+                  <Upload className="w-4 h-4" />
+                  Sell New Prompt
+                </Link>
               </div>
             </div>
 
@@ -314,7 +371,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <PayoutModal isOpen={showPayoutModal} onClose={() => setShowPayoutModal(false)} availableCredits={creatorStats.availableBalance} onSuccess={() => { fetchCreatorStats(); }} />
+      <PayoutModal isOpen={showPayoutModal} onClose={() => setShowPayoutModal(false)} availableUsd={creatorStats.usdBalance} onSuccess={() => { fetchCreatorStats(); }} />
       <AuthModal isOpen={isAuthOpen} onClose={() => { setIsAuthOpen(false); navigate('/'); }} />
     </div>
   );

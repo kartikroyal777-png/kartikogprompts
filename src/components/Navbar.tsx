@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sparkles, Upload, Sun, Moon, Coins, LogIn, PlusSquare, UserCircle } from 'lucide-react';
+import { Sparkles, Upload, Sun, Moon, Coins, LogIn, PlusSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +11,9 @@ const Navbar = () => {
   const { theme, toggleTheme } = useTheme();
   const { user, wallet, profile } = useAuth();
   const [isAuthOpen, setIsAuthOpen] = React.useState(false);
+
+  // Ensure 0 is displayed if wallet exists but balance is 0, or default to 0
+  const creditBalance = wallet?.balance_credits ?? 0;
 
   return (
     <>
@@ -53,21 +56,18 @@ const Navbar = () => {
             {/* Right Actions */}
             <div className="flex items-center gap-2 sm:gap-3">
               
-              {/* Credits Display (Swapped: Now first on Mobile to appear left of theme toggle if using flex-row-reverse, but here we use order) */}
-              {/* Requirement: "shift credits right side on the place of switch theme toggle" */}
-              {/* Current Order: 1. Theme, 2. Credits. Swapping them. */}
-              
-              {user && wallet && (
+              {/* Credits Display - Always show if user is logged in, even if 0 */}
+              {user && (
                 <Link 
                   to="/buy-credits" 
                   className="order-1 md:order-none flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-xs sm:text-sm font-bold border border-amber-200 dark:border-amber-800 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
                 >
                   <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
-                  {wallet.balance_credits}
+                  {creditBalance}
                 </Link>
               )}
 
-              {/* Theme Toggle (Swapped: Now second on Mobile) */}
+              {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
                 className="order-2 md:order-none p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"

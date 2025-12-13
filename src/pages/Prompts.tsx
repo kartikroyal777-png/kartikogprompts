@@ -47,7 +47,7 @@ const Prompts = () => {
               return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
             });
 
-         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
          if (imagesList.length > 0) {
              imageUrl = imagesList[0];
          } else if (p.image) {

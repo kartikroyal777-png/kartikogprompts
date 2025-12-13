@@ -10,6 +10,7 @@ import ImageCarousel from '../components/ImageCarousel';
 import { useAuth } from '../context/AuthContext';
 import UnlockModal from '../components/UnlockModal';
 import AuthModal from '../components/AuthModal';
+import ShareModal from '../components/ShareModal';
 
 interface BundleItem {
   index: number;
@@ -36,6 +37,9 @@ const PromptDetail = () => {
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
+
+  // Share State
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     if (id) fetchPromptDetail();
@@ -111,7 +115,7 @@ const PromptDetail = () => {
           return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
         });
 
-      let primaryImage = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+      let primaryImage = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
       if (imagesList.length > 0) primaryImage = imagesList[0];
       else if (p.image) primaryImage = p.image;
 
@@ -200,23 +204,6 @@ const PromptDetail = () => {
     setTimeout(() => setVideoCopied(false), 2000);
   };
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: prompt?.title || 'OGPrompts',
-          text: `Check out this AI prompt: ${prompt?.title}`,
-          url: window.location.href,
-        });
-      } catch (err) {
-        console.log('Error sharing', err);
-      }
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      alert('Link copied to clipboard!');
-    }
-  };
-
   if (loading) return <div className="min-h-screen flex items-center justify-center dark:bg-slate-950 dark:text-white"><div className="animate-pulse">Loading...</div></div>;
   if (!prompt) return <div className="min-h-screen flex items-center justify-center dark:bg-slate-950 dark:text-white">Prompt not found</div>;
 
@@ -243,9 +230,6 @@ const PromptDetail = () => {
             className="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl bg-gray-100 dark:bg-slate-900 border border-gray-100 dark:border-slate-800 relative group"
           >
             <ImageCarousel images={imagesToDisplay} alt={prompt.title} />
-            
-            {/* REMOVED: Locked Overlay on Image if Paid & Locked */}
-            {/* The user requested to remove the lock overlay so premium images can be previewed */}
           </motion.div>
           
           <div className="flex gap-4">
@@ -264,7 +248,7 @@ const PromptDetail = () => {
             </motion.button>
             <motion.button 
               whileTap={{ scale: 0.95 }}
-              onClick={handleShare}
+              onClick={() => setShowShareModal(true)}
               className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm"
             >
               <Share2 className="w-5 h-5" />
@@ -460,6 +444,13 @@ const PromptDetail = () => {
       <AuthModal 
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
+      />
+
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        title={prompt.title}
+        url={window.location.href}
       />
     </div>
   );

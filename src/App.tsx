@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import Footer from './components/Footer'; 
@@ -27,6 +28,7 @@ function App() {
       <ThemeProvider>
         <Router>
           <ScrollToTop />
+          <Toaster position="top-center" reverseOrder={false} />
           <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 flex flex-col">
             <Navbar />
             <EbookPopup />

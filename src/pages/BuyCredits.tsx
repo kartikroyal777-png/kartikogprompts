@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Coins, Check, Zap, ShieldCheck, Gift, Loader2 } from 'lucide-react';
+import { Coins, Check, Zap, ShieldCheck, Gift, Loader2, AlertTriangle, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
@@ -7,19 +7,18 @@ import { initializePaddle, Paddle } from '@paddle/paddle-js';
 
 // Paddle Credentials
 const PADDLE_CLIENT_TOKEN = 'test_508e43bdb0bcfc3e72b7a8d97b4';
-const PADDLE_API_KEY = 'apikey_01kcecn9vtc3wrdxcvy7gha368'; // Used to fetch prices for products
 
-// Product IDs mapped to plans
-const PRODUCT_IDS = {
-  starter: 'pro_01kcec1vp78f1xeeb0ntec9c4f',
-  pro: 'pro_01kcec3f3k341wdy3h9ew7vg5c',
-  ultra: 'pro_01kcec4andr9qyn6qbt8bacxay'
+// Updated Price IDs provided by user
+const PRICE_IDS: Record<string, string> = {
+  starter: 'pri_01kcedde45xa69gnet6xz0eds9',
+  pro: 'pri_01kcedfkhj060kde35cfnkzn14',
+  ultra: 'pri_01kcedjfvdppt5hfj3jss65dh4'
 };
 
 const PLANS = [
-  { id: 'starter', price: 1, credits: 10, label: 'Starter', promptCount: 50, popular: false, desc: 'Unlock up to 50 prompts', productId: PRODUCT_IDS.starter },
-  { id: 'pro', price: 10, credits: 100, label: 'Pro', promptCount: 500, popular: true, desc: 'Unlock up to 500 prompts', productId: PRODUCT_IDS.pro },
-  { id: 'ultra', price: 50, credits: 500, label: 'Ultra', promptCount: 2500, popular: false, desc: 'Unlock up to 2500 prompts', productId: PRODUCT_IDS.ultra },
+  { id: 'starter', price: 1, credits: 10, label: 'Starter', promptCount: 50, popular: false, desc: 'Unlock up to 50 prompts' },
+  { id: 'pro', price: 10, credits: 100, label: 'Pro', promptCount: 500, popular: true, desc: 'Unlock up to 500 prompts' },
+  { id: 'ultra', price: 50, credits: 500, label: 'Ultra', promptCount: 2500, popular: false, desc: 'Unlock up to 2500 prompts' },
 ];
 
 export default function BuyCredits() {
@@ -28,12 +27,15 @@ export default function BuyCredits() {
   
   // Paddle State
   const [paddle, setPaddle] = useState<Paddle | undefined>(undefined);
-  const [priceIds, setPriceIds] = useState<Record<string, string>>({});
   const [loadingPaddle, setLoadingPaddle] = useState(true);
+  const [paddleError, setPaddleError] = useState<string | null>(null);
   
   // Coupon State
   const [couponCode, setCouponCode] = useState('');
   const [redeeming, setRedeeming] = useState(false);
+
+  // Check if running in iframe
+  const isIframe = typeof window !== 'undefined' && window.self !== window.top;
 
   useEffect(() => {
     const initPaddle = async () => {
@@ -45,14 +47,19 @@ export default function BuyCredits() {
             if (data.name === 'checkout.completed') {
               handlePaddleSuccess(data.data);
             }
+          },
+          checkout: {
+            settings: {
+              displayMode: 'overlay',
+              theme: 'light',
+              locale: 'en'
+            }
           }
         });
         setPaddle(paddleInstance);
-        
-        // Fetch Prices for Products
-        await fetchPriceIds();
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to initialize Paddle:", error);
+        setPaddleError("Payment system failed to load. Please refresh.");
       } finally {
         setLoadingPaddle(false);
       }
@@ -61,36 +68,13 @@ export default function BuyCredits() {
     initPaddle();
   }, []);
 
-  const fetchPriceIds = async () => {
-    // Helper to fetch price for a product
-    const fetchPrice = async (productId: string) => {
-      try {
-        const response = await fetch(`https://sandbox-api.paddle.com/prices?product_id=${productId}&status=active`, {
-          headers: {
-            'Authorization': `Bearer ${PADDLE_API_KEY}`
-          }
-        });
-        const data = await response.json();
-        if (data.data && data.data.length > 0) {
-          return data.data[0].id; // Return the first active price ID
-        }
-      } catch (err) {
-        console.error(`Error fetching price for ${productId}`, err);
-      }
-      return null;
-    };
-
-    const newPriceIds: Record<string, string> = {};
-    for (const plan of PLANS) {
-      const priceId = await fetchPrice(plan.productId);
-      if (priceId) {
-        newPriceIds[plan.id] = priceId;
-      }
-    }
-    setPriceIds(newPriceIds);
-  };
-
   const handlePurchaseClick = (plan: typeof PLANS[0]) => {
+    // 1. Prevent "Refused to connect" error by blocking iframe attempts
+    if (isIframe) {
+      alert("⚠️ SECURITY RESTRICTION ⚠️\n\nPayment gateways cannot run inside this preview window.\n\nPlease click the 'Open in New Tab' button (top-right corner) to complete your purchase safely.");
+      return;
+    }
+
     if (!user) {
       navigate('/auth');
       return;
@@ -101,46 +85,48 @@ export default function BuyCredits() {
       return;
     }
 
-    const priceId = priceIds[plan.id];
-    if (!priceId) {
-      alert("Error: Could not load price configuration for this product. Please contact support.");
+    const priceId = PRICE_IDS[plan.id];
+    
+    // Validation: Ensure Price ID is valid
+    if (!priceId || !priceId.startsWith('pri_')) {
+      alert(`Configuration Error: Invalid Price ID for ${plan.label}. It must start with 'pri_'. Please check the code.`);
       return;
     }
 
-    paddle.Checkout.open({
-      items: [{ priceId: priceId, quantity: 1 }],
-      customer: {
-        email: user.email || '',
-      },
-      customData: {
-        userId: user.id,
-        credits: plan.credits.toString()
-      }
-    });
+    try {
+      paddle.Checkout.open({
+        items: [{ priceId: priceId, quantity: 1 }],
+        customer: {
+          email: user.email || '',
+        },
+        customData: {
+          userId: user.id,
+          credits: plan.credits.toString()
+        },
+        settings: {
+          successUrl: window.location.href, // Optional: helps with some redirects
+          displayMode: 'overlay',
+        }
+      });
+    } catch (err: any) {
+      console.error("Paddle Checkout Error:", err);
+      alert("Failed to open checkout. Please ensure you have allowed this domain in your Paddle Dashboard.");
+    }
   };
 
   const handlePaddleSuccess = async (data: any) => {
-    // In a real production app, you should listen to webhooks.
-    // For this frontend-only/sandbox integration, we'll update credits client-side securely as possible.
-    
-    // Extract credits from customData if available, or infer from items
+    // Extract credits from customData if available
     let creditsToAdd = 0;
     
-    // Try to find which plan was bought
-    // Note: data structure depends on Paddle event version, assuming standard checkout object
-    if (data.items) {
-       // Logic to match purchased item to plan
-       // For simplicity in this demo, we can rely on customData passed during checkout
-       if (data.custom_data && data.custom_data.credits) {
-         creditsToAdd = parseInt(data.custom_data.credits);
-       }
+    if (data.custom_data && data.custom_data.credits) {
+      creditsToAdd = parseInt(data.custom_data.credits);
     }
 
-    // Fallback if custom_data isn't available in the event payload immediately
-    // We can try to match the price ID from our state
+    // Fallback: Match based on price ID
     if (creditsToAdd === 0 && data.items) {
         for (const item of data.items) {
-            const plan = PLANS.find(p => priceIds[p.id] === item.price_id);
+            const planId = Object.keys(PRICE_IDS).find(key => PRICE_IDS[key] === item.price_id);
+            const plan = PLANS.find(p => p.id === planId);
             if (plan) {
                 creditsToAdd += plan.credits * (item.quantity || 1);
             }
@@ -191,6 +177,23 @@ export default function BuyCredits() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 pt-28 pb-24 px-4 transition-colors duration-300">
       <div className="max-w-5xl mx-auto">
+        
+        {/* Debug/Help Banner for "Refused to Connect" */}
+        {isIframe && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-8 flex items-start gap-3 animate-pulse">
+            <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-500 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-red-800 dark:text-red-200">
+              <p className="font-bold text-lg mb-1">Action Required: Open in New Tab</p>
+              <p className="mb-2">
+                Payments <strong>will not work</strong> in this preview window due to browser security (you will see a "refused to connect" error).
+              </p>
+              <p className="font-bold">
+                👉 Please click the "Open in New Tab" button (top-right of the preview pane) to test payments.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">Top Up Your Wallet</h1>
           <p className="text-lg text-slate-600 dark:text-slate-400">Unlock premium prompts and support creators directly.</p>
@@ -251,7 +254,7 @@ export default function BuyCredits() {
 
               <button
                 onClick={() => handlePurchaseClick(plan)}
-                disabled={loadingPaddle || !priceIds[plan.id]}
+                disabled={loadingPaddle}
                 className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                   plan.popular
                     ? 'bg-sky-500 hover:bg-sky-600 text-white shadow-lg shadow-sky-500/25'

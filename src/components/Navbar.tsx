@@ -25,8 +25,8 @@ const Navbar = () => {
               <div className="relative w-8 h-8 flex items-center justify-center bg-sky-500 rounded-lg shadow-lg shadow-sky-500/20 group-hover:scale-105 transition-transform">
                  <Sparkles className="h-5 w-5 text-white fill-white" />
               </div>
-              <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300">
-                OGPrompts
+              <span className="text-xl font-bold text-slate-800 dark:text-white">
+                <span className="text-sky-500">OG</span> Prompts
               </span>
             </Link>
 
@@ -36,6 +36,7 @@ const Navbar = () => {
                 { name: 'Prompts', path: '/prompts' },
                 { name: 'Ebook', path: '/ebook' },
                 { name: 'Instructions', path: '/instructions' },
+                { name: 'Buy Credits', path: '/buy-credits' },
                 ...(user ? [{ name: 'Profile', path: '/profile' }] : []),
               ].map((item) => (
                 <Link 
@@ -87,22 +88,13 @@ const Navbar = () => {
               )}
 
               {user ? (
-                profile?.creator_badge ? (
-                   <Link
-                    to="/upload"
-                    className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold rounded-full transition-all shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 active:scale-95 order-4"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Upload
-                  </Link>
-                ) : (
-                  <Link
-                    to="/become-creator"
-                    className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-bold rounded-full transition-all shadow-lg shadow-purple-500/25 active:scale-95 order-4"
-                  >
-                    Become Creator
-                  </Link>
-                )
+                 <Link
+                  to="/upload"
+                  className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold rounded-full transition-all shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 active:scale-95 order-4"
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload
+                </Link>
               ) : (
                 <button
                   onClick={() => setIsAuthOpen(true)}

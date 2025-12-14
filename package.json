@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@paddle/paddle-js": "^1.6.1",
     "@supabase/supabase-js": "^2.86.2",
     "axios": "^1.9.0",
     "browser-image-compression": "^2.0.2",

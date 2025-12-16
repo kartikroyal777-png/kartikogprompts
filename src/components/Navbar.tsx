@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sparkles, Upload, Sun, Moon, Coins, LogIn, PlusSquare } from 'lucide-react';
+import { Sparkles, Upload, Sun, Moon, Coins, LogIn, PlusSquare, User } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -35,7 +35,7 @@ const Navbar = () => {
               {[
                 { name: 'Prompts', path: '/prompts' },
                 { name: 'Ebook', path: '/ebook' },
-                { name: 'Instructions', path: '/instructions' },
+                { name: 'Rate Me', path: '/rate-me' }, // Replaced Instructions
                 { name: 'Buy Credits', path: '/buy-credits' },
                 ...(user ? [{ name: 'Profile', path: '/profile' }] : []),
               ].map((item) => (
@@ -76,6 +76,16 @@ const Navbar = () => {
               >
                 {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
               </button>
+              
+              {/* Mobile Profile Icon (New) */}
+              {user && (
+                <Link 
+                  to="/profile"
+                  className="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 order-2"
+                >
+                  <User className="w-6 h-6" />
+                </Link>
+              )}
 
               {/* Mobile Upload Icon for Creators */}
               {user && profile?.creator_badge && (

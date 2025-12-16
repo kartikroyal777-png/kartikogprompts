@@ -10,13 +10,14 @@ const PADDLE_CLIENT_TOKEN = 'test_508e43bdb0bcfc3e72b7a8d97b4';
 
 // Updated Price IDs provided by user
 const PRICE_IDS: Record<string, string> = {
-  starter: 'pri_01kcedde45xa69gnet6xz0eds9',
+  // TODO: Update this ID with the new $5 Price ID from your Paddle Dashboard
+  starter: 'pri_01kcedde45xa69gnet6xz0eds9', 
   pro: 'pri_01kcedfkhj060kde35cfnkzn14',
   ultra: 'pri_01kcedjfvdppt5hfj3jss65dh4'
 };
 
 const PLANS = [
-  { id: 'starter', price: 1, credits: 10, label: 'Starter', promptCount: 50, popular: false, desc: 'Unlock up to 50 prompts' },
+  { id: 'starter', price: 5, credits: 50, label: 'Starter', promptCount: 250, popular: false, desc: 'Unlock up to 250 prompts' },
   { id: 'pro', price: 10, credits: 100, label: 'Pro', promptCount: 500, popular: true, desc: 'Unlock up to 500 prompts' },
   { id: 'ultra', price: 50, credits: 500, label: 'Ultra', promptCount: 2500, popular: false, desc: 'Unlock up to 2500 prompts' },
 ];

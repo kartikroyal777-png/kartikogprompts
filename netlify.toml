@@ -1,0 +1,10 @@
+[build]
+  # Use yarn to match yarn.lock and ensure consistent dependencies
+  command = "yarn build"
+  publish = "dist"
+
+[build.environment]
+  # Explicitly set Node version to satisfy @supabase requirements
+  NODE_VERSION = "20"
+  # Ensure yarn is used for dependency installation
+  NETLIFY_USE_YARN = "true"

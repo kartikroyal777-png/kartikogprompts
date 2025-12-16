@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, PlusSquare, BookOpen, User, LayoutGrid, Coins } from 'lucide-react';
+import { Home, PlusSquare, BookOpen, Star, LayoutGrid, Coins } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 
@@ -16,7 +16,7 @@ const BottomNav = () => {
       ? { icon: PlusSquare, label: 'Upload', path: '/upload' }
       : { icon: Coins, label: 'Credits', path: '/buy-credits' },
     { icon: BookOpen, label: 'Ebook', path: '/ebook' },
-    { icon: User, label: 'Profile', path: '/profile' },
+    { icon: Star, label: 'Rate Me', path: '/rate-me' }, // Replaced Profile
   ];
 
   return (

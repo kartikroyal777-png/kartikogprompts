@@ -16,7 +16,8 @@ import InstructionsPage from './pages/Instructions';
 import Profile from './pages/Profile';
 import BuyCredits from './pages/BuyCredits';
 import BecomeCreator from './pages/BecomeCreator';
-import CreatorProfile from './pages/CreatorProfile'; // Import new page
+import CreatorProfile from './pages/CreatorProfile';
+import RateMe from './pages/RateMe'; // Import Rate Me
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ScrollToTop from './components/ScrollToTop';
@@ -51,6 +52,7 @@ function App() {
                 <Route path="/buy-credits" element={<BuyCredits />} />
                 <Route path="/become-creator" element={<BecomeCreator />} />
                 <Route path="/creator/:id" element={<CreatorProfile />} />
+                <Route path="/rate-me" element={<RateMe />} />
               </Routes>
             </div>
             <Footer />

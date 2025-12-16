@@ -111,3 +111,46 @@ export interface EarningEntry {
   created_at: string;
   prompt_title: string;
 }
+
+// Rate Me Types
+export interface RateMeParameters {
+  // Core Metrics
+  face: number;
+  outfit: number;
+  eyes: number;
+  jawline: number;
+  skin: number;
+  overall: number;
+  
+  // Detailed Metrics (New)
+  symmetry?: number;
+  canthal_tilt?: number;
+  cheekbones?: number;
+  nose?: number;
+
+  roast?: string;
+  toast?: string;
+}
+
+export interface RateMeEntry {
+  id: string;
+  user_id: string;
+  image_url: string;
+  gender: 'Men' | 'Women';
+  parameters: RateMeParameters;
+  ai_base_score: number;
+  vote_offset: number;
+  final_score: number;
+  is_published: boolean;
+  player_name?: string; // Custom name for leaderboard
+  social_links: {
+    instagram?: string;
+    twitter?: string;
+    youtube?: string;
+  };
+  created_at: string;
+  user_profile?: {
+    full_name: string;
+    avatar_url: string;
+  };
+}

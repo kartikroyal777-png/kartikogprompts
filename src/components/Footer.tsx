@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Instagram, Send, Sparkles, Shield } from 'lucide-react';
+import { Instagram, Send, Sparkles, Shield, Flame } from 'lucide-react';
 
 const Footer = () => {
   return (
@@ -40,15 +40,18 @@ const Footer = () => {
             <h3 className="font-bold text-slate-900 dark:text-white mb-4">Platform</h3>
             <ul className="space-y-2 text-sm text-slate-500 dark:text-slate-400">
               <li><Link to="/prompts" className="hover:text-sky-500 transition-colors">Browse Prompts</Link></li>
+              <li><Link to="/rate-me" className="hover:text-sky-500 transition-colors flex items-center gap-1">Rate Me <Flame className="w-3 h-3 text-red-500" /></Link></li>
               <li><Link to="/upload" className="hover:text-sky-500 transition-colors">Upload Prompt</Link></li>
               <li><Link to="/ebook" className="hover:text-sky-500 transition-colors">AI Mastery eBook</Link></li>
-              <li><Link to="/instructions" className="hover:text-sky-500 transition-colors">How to Use</Link></li>
+              <li><Link to="/buy-credits" className="hover:text-sky-500 transition-colors">Buy Credits</Link></li>
+              <li><Link to="/profile" className="hover:text-sky-500 transition-colors">My Profile</Link></li>
             </ul>
           </div>
 
           <div>
-            <h3 className="font-bold text-slate-900 dark:text-white mb-4">Legal</h3>
+            <h3 className="font-bold text-slate-900 dark:text-white mb-4">Legal & Help</h3>
             <ul className="space-y-2 text-sm text-slate-500 dark:text-slate-400">
+              <li><Link to="/instructions" className="hover:text-sky-500 transition-colors">How to Use</Link></li>
               <li><Link to="/about" className="hover:text-sky-500 transition-colors">About Us</Link></li>
               <li><Link to="/privacy" className="hover:text-sky-500 transition-colors">Privacy Policy</Link></li>
               <li><Link to="/terms" className="hover:text-sky-500 transition-colors">Terms of Service</Link></li>

@@ -2,13 +2,12 @@ const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const SITE_URL = window.location.origin;
 const SITE_NAME = "OGPrompts";
 
-// Expanded priority list of free models to ensure high availability
+// Updated priority list using Amazon Nova Lite as requested
 const MODELS = [
-  "amazon/nova-2-lite-v1:free",                  // Primary (Requested)
-  "google/gemini-2.0-flash-lite-preview-02-05:free", // Stable Backup 1
-  "google/gemini-2.0-pro-exp-02-05:free",        // Stable Backup 2
-  "meta-llama/llama-3.2-11b-vision-instruct:free", // Llama Backup
-  "microsoft/phi-3-vision-128k-instruct:free"    // Microsoft Backup
+  "amazon/nova-lite-v1:free",                    // Primary (Requested)
+  "amazon/nova-2-lite-v1:free",                  // Backup Nova
+  "google/gemini-2.0-flash-lite-preview-02-05:free", // Stable Backup
+  "meta-llama/llama-3.2-11b-vision-instruct:free",
 ];
 
 if (!OPENROUTER_API_KEY) {
@@ -78,9 +77,10 @@ export async function analyzeImage(file: File): Promise<any> {
 
       console.log(`Attempting analysis with model: ${model}`);
       
-      // Only enable reasoning for models that support it (Amazon Nova)
-      const useReasoning = model.includes("nova");
-
+      // Only enable reasoning for models that explicitly support it and if we want to use it.
+      // For Nova Lite, sometimes standard chat completion is more stable without forcing reasoning params if not strictly required.
+      // We will default to standard mode for stability unless it's a reasoning-specific model.
+      
       const body: any = {
         "model": model,
         "messages": [
@@ -96,10 +96,6 @@ export async function analyzeImage(file: File): Promise<any> {
         "top_p": 0.9,
         "response_format": { "type": "json_object" }
       };
-
-      if (useReasoning) {
-        body.reasoning = { "enabled": true };
-      }
 
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -120,7 +116,6 @@ export async function analyzeImage(file: File): Promise<any> {
 
         // Handle specific provider errors
         if (errorMessage.includes("User not found") || response.status === 403 || response.status === 401) {
-            // This usually means the model is not accessible to the account/key
             lastError = new Error(`Model ${model} unavailable. Retrying...`);
             continue; 
         }

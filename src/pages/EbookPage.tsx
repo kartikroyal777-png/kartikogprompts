@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Check, Star, Zap, Shield, Gift, Lock, Download, HelpCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { BookOpen, Check, Star, Zap, Shield, Gift, Download, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import AuthModal from '../components/AuthModal';
-import DotGrid from '../components/DotGrid';
 
 const EbookPage = () => {
   const { user, wallet, profile, refreshProfile } = useAuth();
@@ -109,15 +108,8 @@ const EbookPage = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white pt-24 pb-12 transition-colors duration-300 relative overflow-hidden">
       
-      {/* Background Animation */}
-      <div className="fixed inset-0 z-0 opacity-40 pointer-events-none">
-        <DotGrid 
-          baseColor={theme === 'dark' ? '#0ea5e9' : '#38bdf8'}
-          activeColor="#0284c7"
-          dotSize={8}
-          gap={80}
-        />
-      </div>
+      {/* Aesthetic Grid Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:linear-gradient(to_bottom,#000_60%,transparent_100%)] pointer-events-none z-0"></div>
 
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 

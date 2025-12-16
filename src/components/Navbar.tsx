@@ -21,11 +21,11 @@ const Navbar = () => {
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 group">
+            <Link to="/" className="flex items-center gap-2 group shrink-0">
               <div className="relative w-8 h-8 flex items-center justify-center bg-sky-500 rounded-lg shadow-lg shadow-sky-500/20 group-hover:scale-105 transition-transform">
                  <Sparkles className="h-5 w-5 text-white fill-white" />
               </div>
-              <span className="text-xl font-bold text-slate-800 dark:text-white">
+              <span className="text-xl font-bold text-slate-800 dark:text-white whitespace-nowrap">
                 <span className="text-sky-500">OG</span> Prompts
               </span>
             </Link>
@@ -97,15 +97,7 @@ const Navbar = () => {
                 </Link>
               )}
 
-              {/* Mobile Upload Icon for Creators */}
-              {user && profile?.creator_badge && (
-                <Link 
-                  to="/upload"
-                  className="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 order-3"
-                >
-                  <PlusSquare className="w-6 h-6" />
-                </Link>
-              )}
+              {/* Removed Mobile Upload Icon as requested */}
 
               {user ? (
                  <Link

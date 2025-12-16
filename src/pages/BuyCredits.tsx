@@ -5,7 +5,6 @@ import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { initializePaddle, Paddle } from '@paddle/paddle-js';
-import DotGrid from '../components/DotGrid';
 
 // Paddle Credentials
 const PADDLE_CLIENT_TOKEN = 'test_508e43bdb0bcfc3e72b7a8d97b4';
@@ -181,15 +180,8 @@ export default function BuyCredits() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-28 pb-24 px-4 transition-colors duration-300 relative overflow-hidden">
       
-      {/* Background Animation */}
-      <div className="fixed inset-0 z-0 opacity-40 pointer-events-none">
-        <DotGrid 
-          baseColor={theme === 'dark' ? '#0ea5e9' : '#38bdf8'}
-          activeColor="#0284c7"
-          dotSize={8}
-          gap={80}
-        />
-      </div>
+      {/* Aesthetic Grid Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:linear-gradient(to_bottom,#000_60%,transparent_100%)] pointer-events-none z-0"></div>
 
       <div className="relative z-10 max-w-5xl mx-auto">
         

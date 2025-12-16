@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Coins, Check, Zap, ShieldCheck, Gift, Loader2, AlertTriangle, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { initializePaddle, Paddle } from '@paddle/paddle-js';
+import DotGrid from '../components/DotGrid';
 
 // Paddle Credentials
 const PADDLE_CLIENT_TOKEN = 'test_508e43bdb0bcfc3e72b7a8d97b4';
@@ -24,6 +26,7 @@ const PLANS = [
 
 export default function BuyCredits() {
   const { user, wallet, refreshProfile } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   
   // Paddle State
@@ -176,8 +179,19 @@ export default function BuyCredits() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 pt-28 pb-24 px-4 transition-colors duration-300">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-28 pb-24 px-4 transition-colors duration-300 relative overflow-hidden">
+      
+      {/* Background Animation */}
+      <div className="fixed inset-0 z-0 opacity-40 pointer-events-none">
+        <DotGrid 
+          baseColor={theme === 'dark' ? '#0ea5e9' : '#38bdf8'}
+          activeColor="#0284c7"
+          dotSize={8}
+          gap={80}
+        />
+      </div>
+
+      <div className="relative z-10 max-w-5xl mx-auto">
         
         {/* Debug/Help Banner for "Refused to Connect" */}
         {isIframe && (
@@ -214,7 +228,7 @@ export default function BuyCredits() {
           {PLANS.map((plan) => (
             <div 
               key={plan.id}
-              className={`relative bg-white dark:bg-slate-900 rounded-3xl p-8 border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+              className={`relative bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm rounded-3xl p-8 border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
                 plan.popular 
                   ? 'border-sky-500 ring-4 ring-sky-500/10 shadow-lg shadow-sky-500/10' 
                   : 'border-gray-200 dark:border-slate-800 hover:border-sky-300 dark:hover:border-sky-700'
@@ -270,7 +284,7 @@ export default function BuyCredits() {
         </div>
 
         {/* Coupon Section */}
-        <div className="max-w-md mx-auto bg-white dark:bg-slate-900 rounded-2xl p-6 border border-gray-200 dark:border-slate-800 shadow-sm">
+        <div className="max-w-md mx-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
               <Gift className="w-5 h-5" />

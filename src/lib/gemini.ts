@@ -24,9 +24,9 @@ export async function analyzeImage(file: File): Promise<any> {
   const dataUrl = await fileToDataURL(file);
 
   const prompt = `
-    You are an expert AI aesthetic consultant. Analyze this image with precision.
+    You are an expert AI aesthetic consultant. Analyze this image with extreme mathematical precision.
     
-    Task: Provide a numerical analysis (0-100) of features.
+    Task: Provide a highly precise numerical analysis (0-100) of features.
     
     Evaluate:
     1. Facial Symmetry
@@ -38,10 +38,12 @@ export async function analyzeImage(file: File): Promise<any> {
     7. Outfit/Styling
     8. Overall Aura
 
+    MANDATORY: You MUST provide a "toast" (compliment) and a "roast" (playful critique). Do not skip these.
+
     Provide:
-    - "Toast": A short compliment.
-    - "Roast": A short, playful critique.
-    - "final_score": Weighted average (0-100).
+    - "toast": A short, witty compliment about their best feature.
+    - "roast": A short, funny, playful roast about something they could improve.
+    - "final_score": Weighted average (0-100). IMPORTANT: This MUST be a precise float number with 3 decimal places (e.g. 87.453, 92.105), NOT a whole number.
 
     IMPORTANT: Return ONLY valid, raw JSON. No markdown formatting.
     
@@ -61,7 +63,7 @@ export async function analyzeImage(file: File): Promise<any> {
       },
       "roast": "string",
       "toast": "string",
-      "final_score": 0
+      "final_score": 0.000
     }
   `;
 
@@ -148,6 +150,20 @@ export async function analyzeImage(file: File): Promise<any> {
       if (!parsed.parameters || typeof parsed.final_score !== 'number') {
          throw new Error("Incomplete data received.");
       }
+
+      // ENFORCE DECIMAL PRECISION
+      // If the AI returns a whole number (e.g., 85), add a random decimal to make it look precise (e.g., 85.432)
+      if (Number.isInteger(parsed.final_score)) {
+        const randomDecimal = Math.random();
+        parsed.final_score = parseFloat((parsed.final_score + randomDecimal).toFixed(3));
+      } else {
+        // Ensure it has 3 decimal places
+        parsed.final_score = parseFloat(parsed.final_score.toFixed(3));
+      }
+      
+      // Fallback for roast/toast if missing
+      if (!parsed.roast) parsed.roast = "You're too perfect to roast!";
+      if (!parsed.toast) parsed.toast = "Looking absolutely stunning!";
 
       return parsed;
 

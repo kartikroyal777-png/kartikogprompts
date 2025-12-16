@@ -17,9 +17,18 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ refreshTrigger }) => {
   const [entries, setEntries] = useState<RateMeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRank, setUserRank] = useState<{rank: number, score: number} | null>(null);
+  const [votedEntries, setVotedEntries] = useState<string[]>([]);
 
   // Admin Check
   const isAdmin = user?.email === 'kartikroyal777@gmail.com';
+
+  useEffect(() => {
+    // Load voted entries from local storage on mount
+    const savedVotes = localStorage.getItem('rate_me_votes');
+    if (savedVotes) {
+      setVotedEntries(JSON.parse(savedVotes));
+    }
+  }, []);
 
   useEffect(() => {
     fetchLeaderboard();
@@ -106,14 +115,24 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ refreshTrigger }) => {
       return;
     }
 
+    if (votedEntries.includes(entryId)) {
+      toast.error("You have already voted for this person!");
+      return;
+    }
+
     // Optimistic Update
     setEntries(prev => prev.map(e => {
       if (e.id === entryId) {
-        const change = type === 'UP' ? 0.01 : -0.01;
+        const change = type === 'UP' ? 0.10 : -0.10; // Updated to 0.10 as requested
         return { ...e, final_score: e.final_score + change };
       }
       return e;
     }));
+
+    // Update Local Storage
+    const newVotedEntries = [...votedEntries, entryId];
+    setVotedEntries(newVotedEntries);
+    localStorage.setItem('rate_me_votes', JSON.stringify(newVotedEntries));
 
     try {
       const { error } = await supabase.rpc('handle_rate_me_vote', {
@@ -126,7 +145,13 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ refreshTrigger }) => {
     } catch (error: any) {
       console.error("Voting error:", error);
       toast.error("Vote failed: " + error.message);
-      fetchLeaderboard(); // Revert on error
+      
+      // Revert on error
+      fetchLeaderboard(); 
+      // Revert local storage
+      const revertedVotes = votedEntries.filter(id => id !== entryId);
+      setVotedEntries(revertedVotes);
+      localStorage.setItem('rate_me_votes', JSON.stringify(revertedVotes));
     }
   };
 
@@ -177,65 +202,78 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ refreshTrigger }) => {
         ) : entries.length === 0 ? (
           <div className="text-center py-12 text-slate-500">No entries yet. Be the first!</div>
         ) : (
-          entries.map((entry, index) => (
-            <motion.div
-              key={entry.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className={`relative bg-white dark:bg-slate-900 border ${user?.id === entry.user_id ? 'border-yellow-500/50 shadow-yellow-500/10' : 'border-slate-200 dark:border-slate-800'} rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow`}
-            >
-              {/* Rank */}
-              <div className="flex-shrink-0 w-10 flex justify-center">
-                {getRankIcon(index)}
-              </div>
-
-              {/* Avatar/Image */}
-              <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0 border border-slate-200 dark:border-slate-700 group cursor-pointer">
-                <img src={entry.image_url} alt="Entry" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-slate-900 dark:text-white font-bold truncate flex items-center gap-2">
-                  {entry.player_name || entry.user_profile?.full_name || 'Anonymous'}
-                  {user?.id === entry.user_id && <span className="text-[10px] bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 px-1.5 py-0.5 rounded font-bold">YOU</span>}
-                </h3>
-                <div className="flex gap-2 mt-1">
-                  {entry.social_links?.instagram && (
-                    <a href={entry.social_links.instagram} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-pink-500 transition-colors"><Instagram className="w-3.5 h-3.5" /></a>
-                  )}
-                  {entry.social_links?.twitter && (
-                    <a href={entry.social_links.twitter} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-sky-500 transition-colors"><Twitter className="w-3.5 h-3.5" /></a>
-                  )}
+          entries.map((entry, index) => {
+            const hasVoted = votedEntries.includes(entry.id);
+            const isOwnEntry = user?.id === entry.user_id;
+            
+            return (
+              <motion.div
+                key={entry.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className={`relative bg-white dark:bg-slate-900 border ${isOwnEntry ? 'border-yellow-500/50 shadow-yellow-500/10' : 'border-slate-200 dark:border-slate-800'} rounded-2xl p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow`}
+              >
+                {/* Rank */}
+                <div className="flex-shrink-0 w-10 flex justify-center">
+                  {getRankIcon(index)}
                 </div>
-              </div>
 
-              {/* Score */}
-              <div className="text-right mr-2">
-                <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{entry.final_score.toFixed(3)}</div>
-                <div className="text-[10px] text-slate-400 uppercase font-bold">Score</div>
-              </div>
+                {/* Avatar/Image */}
+                <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0 border border-slate-200 dark:border-slate-700 group cursor-pointer">
+                  <img src={entry.image_url} alt="Entry" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                </div>
 
-              {/* Voting */}
-              <div className="flex flex-col gap-1 border-l border-slate-200 dark:border-slate-800 pl-4">
-                <button 
-                  onClick={() => handleVote(entry.id, 'UP')}
-                  disabled={user?.id === entry.user_id}
-                  className="p-1 text-slate-400 hover:text-green-500 hover:bg-green-500/10 rounded transition-colors disabled:opacity-30"
-                >
-                  <ChevronUp className="w-5 h-5" />
-                </button>
-                <button 
-                  onClick={() => handleVote(entry.id, 'DOWN')}
-                  disabled={user?.id === entry.user_id}
-                  className="p-1 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors disabled:opacity-30"
-                >
-                  <ChevronDown className="w-5 h-5" />
-                </button>
-              </div>
-            </motion.div>
-          ))
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-slate-900 dark:text-white font-bold truncate flex items-center gap-2">
+                    {entry.player_name || entry.user_profile?.full_name || 'Anonymous'}
+                    {isOwnEntry && <span className="text-[10px] bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 px-1.5 py-0.5 rounded font-bold">YOU</span>}
+                  </h3>
+                  <div className="flex gap-2 mt-1">
+                    {entry.social_links?.instagram && (
+                      <a href={entry.social_links.instagram} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-pink-500 transition-colors"><Instagram className="w-3.5 h-3.5" /></a>
+                    )}
+                    {entry.social_links?.twitter && (
+                      <a href={entry.social_links.twitter} target="_blank" rel="noreferrer" className="text-slate-400 hover:text-sky-500 transition-colors"><Twitter className="w-3.5 h-3.5" /></a>
+                    )}
+                  </div>
+                </div>
+
+                {/* Score */}
+                <div className="text-right mr-2">
+                  <div className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{entry.final_score.toFixed(3)}</div>
+                  <div className="text-[10px] text-slate-400 uppercase font-bold">Score</div>
+                </div>
+
+                {/* Voting */}
+                <div className="flex flex-col gap-1 border-l border-slate-200 dark:border-slate-800 pl-4">
+                  <button 
+                    onClick={() => handleVote(entry.id, 'UP')}
+                    disabled={isOwnEntry || hasVoted}
+                    className={`p-1 rounded transition-colors ${
+                      hasVoted 
+                        ? 'text-slate-300 dark:text-slate-700 cursor-not-allowed' 
+                        : 'text-slate-400 hover:text-green-500 hover:bg-green-500/10'
+                    }`}
+                  >
+                    <ChevronUp className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => handleVote(entry.id, 'DOWN')}
+                    disabled={isOwnEntry || hasVoted}
+                    className={`p-1 rounded transition-colors ${
+                      hasVoted 
+                        ? 'text-slate-300 dark:text-slate-700 cursor-not-allowed' 
+                        : 'text-slate-400 hover:text-red-500 hover:bg-red-500/10'
+                    }`}
+                  >
+                    <ChevronDown className="w-5 h-5" />
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })
         )}
       </div>
 

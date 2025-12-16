@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Check, Star, Zap, Shield, Gift, Lock, Download, HelpCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import AuthModal from '../components/AuthModal';
+import DotGrid from '../components/DotGrid';
 
 const EbookPage = () => {
   const { user, wallet, profile, refreshProfile } = useAuth();
+  const { theme } = useTheme();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
@@ -104,10 +107,21 @@ const EbookPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white pt-24 pb-12 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white pt-24 pb-12 transition-colors duration-300 relative overflow-hidden">
+      
+      {/* Background Animation */}
+      <div className="fixed inset-0 z-0 opacity-40 pointer-events-none">
+        <DotGrid 
+          baseColor={theme === 'dark' ? '#0ea5e9' : '#38bdf8'}
+          activeColor="#0284c7"
+          dotSize={8}
+          gap={80}
+        />
+      </div>
+
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Hero Section */}
         <div className="flex flex-col md:flex-row items-center gap-12 mb-20">
           {/* Cover Image */}
@@ -116,7 +130,7 @@ const EbookPage = () => {
               initial={{ opacity: 0, scale: 0.9, rotate: -5 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               transition={{ duration: 0.6 }}
-              className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl shadow-sky-500/20 border border-slate-200 dark:border-slate-800"
+              className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl shadow-sky-500/20 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
             >
               <img 
                 src={COVER_IMAGE} 
@@ -182,7 +196,7 @@ const EbookPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 rounded-2xl hover:shadow-lg transition-all"
+                className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-200 dark:border-slate-800 p-8 rounded-2xl hover:shadow-lg transition-all"
               >
                 <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 rounded-xl flex items-center justify-center mb-6">
                   <feature.icon className="w-6 h-6 text-sky-600 dark:text-sky-400" />

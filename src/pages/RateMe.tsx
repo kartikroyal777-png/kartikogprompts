@@ -147,10 +147,12 @@ export default function RateMe() {
       };
 
       if (isAdmin) {
+        // ADMIN: Always insert new entry to allow multiple uploads
         const { error: insertError } = await supabase.from('rate_me_entries').insert(entryData);
         if (insertError) throw insertError;
         toast.success("Admin Entry Published!");
       } else {
+        // NORMAL USER: Update existing entry if exists, else insert
         const { data: existingEntry } = await supabase
             .from('rate_me_entries')
             .select('id')
@@ -195,13 +197,13 @@ export default function RateMe() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white pt-24 pb-24 px-4 overflow-x-hidden transition-colors duration-300">
       
-      {/* Background Animation */}
+      {/* Background Animation - Updated Gap for Density */}
       <div className="fixed inset-0 z-0 opacity-40 pointer-events-none">
         <DotGrid 
           baseColor={theme === 'dark' ? '#0ea5e9' : '#38bdf8'}
           activeColor="#0284c7"
           dotSize={8}
-          gap={80}
+          gap={25}
         />
       </div>
 

@@ -115,6 +115,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ refreshTrigger }) => {
       return;
     }
 
+    // Check if user has already voted for THIS specific entry
     if (votedEntries.includes(entryId)) {
       toast.error("You have already voted for this person!");
       return;
@@ -123,13 +124,14 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ refreshTrigger }) => {
     // Optimistic Update
     setEntries(prev => prev.map(e => {
       if (e.id === entryId) {
-        const change = type === 'UP' ? 0.10 : -0.10; // Updated to 0.10 as requested
+        // EXACTLY 0.10 WEIGHT as requested
+        const change = type === 'UP' ? 0.10 : -0.10; 
         return { ...e, final_score: e.final_score + change };
       }
       return e;
     }));
 
-    // Update Local Storage
+    // Update Local Storage - Track this entry ID
     const newVotedEntries = [...votedEntries, entryId];
     setVotedEntries(newVotedEntries);
     localStorage.setItem('rate_me_votes', JSON.stringify(newVotedEntries));

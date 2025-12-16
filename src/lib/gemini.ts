@@ -38,11 +38,12 @@ export async function analyzeImage(file: File): Promise<any> {
     7. Outfit/Styling
     8. Overall Aura
 
-    MANDATORY: You MUST provide a "toast" (compliment) and a "roast" (playful critique). Do not skip these.
+    MANDATORY: You MUST provide a "toast" (compliment) and a "roast" (playful critique).
+    - The "toast" should be a short, witty compliment about their best feature.
+    - The "roast" should be a short, funny, playful roast about something they could improve.
+    - DO NOT leave these empty. If you can't find something, invent a playful one.
 
     Provide:
-    - "toast": A short, witty compliment about their best feature.
-    - "roast": A short, funny, playful roast about something they could improve.
     - "final_score": Weighted average (0-100). IMPORTANT: This MUST be a precise float number with 3 decimal places (e.g. 87.453, 92.105), NOT a whole number.
 
     IMPORTANT: Return ONLY valid, raw JSON. No markdown formatting.

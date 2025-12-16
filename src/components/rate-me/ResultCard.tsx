@@ -165,7 +165,7 @@ const ResultCard: React.FC<ResultCardProps> = ({ image, data, finalScore, onPubl
             </p>
           </div>
           
-          {/* Branding Footer for Screenshot */}
+          {/* Branding Footer for Screenshot - Updated */}
           <div className="text-center pt-2 pb-1">
             <p className="text-xs text-slate-500 font-bold tracking-widest uppercase">OG Prompts • Aesthetic AI</p>
           </div>

@@ -18,7 +18,7 @@ const Footer = () => {
             </p>
             <div className="flex gap-4 mt-6">
               <a 
-                href="https://www.instagram.com/ogduo.prompts/" 
+                href="https://www.instagram.com/ogduo.ai/" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="p-2 bg-white dark:bg-slate-900 rounded-full shadow-sm hover:text-pink-600 dark:text-slate-300 dark:hover:text-pink-500 transition-colors"

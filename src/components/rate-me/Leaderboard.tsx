@@ -17,6 +17,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ refreshTrigger }) => {
   const [loading, setLoading] = useState(true);
   const [userRank, setUserRank] = useState<{rank: number, score: number} | null>(null);
 
+  // Admin Check
+  const isAdmin = user?.email === 'kartikroyal777@gmail.com';
+
   useEffect(() => {
     fetchLeaderboard();
   }, [activeTab, refreshTrigger]);
@@ -55,8 +58,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ refreshTrigger }) => {
 
       setEntries(mergedData as any);
 
-      // 4. Fetch User Rank if logged in
-      if (user) {
+      // 4. Fetch User Rank if logged in AND NOT ADMIN
+      if (user && !isAdmin) {
         const userInTop = mergedData.find((e: any) => e.user_id === user.id);
         if (userInTop) {
           setUserRank({ 
@@ -64,6 +67,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ refreshTrigger }) => {
             score: userInTop.final_score 
           });
         } else {
+          // Check if user has an entry even if not in top 50
           const { data: myEntry } = await supabase
             .from('rate_me_entries')
             .select('final_score')
@@ -85,6 +89,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ refreshTrigger }) => {
             setUserRank(null);
           }
         }
+      } else {
+        setUserRank(null); // Admins don't see their own rank bar
       }
     } catch (error) {
       console.error("Error fetching leaderboard:", error);
@@ -232,12 +238,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ refreshTrigger }) => {
         )}
       </div>
 
-      {/* Sticky User Rank Footer */}
-      {user && userRank && (
+      {/* Sticky User Rank Footer - High Z-Index to stay on top */}
+      {user && userRank && !isAdmin && (
         <motion.div 
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-yellow-500/30 p-4 z-40 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]"
+          className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-yellow-500/30 p-4 z-[9999] shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]"
         >
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">

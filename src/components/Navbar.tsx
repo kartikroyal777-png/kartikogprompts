@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sparkles, Upload, Sun, Moon, Coins, LogIn, PlusSquare, User } from 'lucide-react';
+import { Sparkles, Upload, Sun, Moon, Coins, LogIn, PlusSquare, User, Flame } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -35,7 +35,11 @@ const Navbar = () => {
               {[
                 { name: 'Prompts', path: '/prompts' },
                 { name: 'Ebook', path: '/ebook' },
-                { name: 'Rate Me', path: '/rate-me' }, // Replaced Instructions
+                { 
+                  name: 'Rate Me', 
+                  path: '/rate-me',
+                  badge: true 
+                },
                 { name: 'Buy Credits', path: '/buy-credits' },
                 ...(user ? [{ name: 'Profile', path: '/profile' }] : []),
               ].map((item) => (
@@ -43,13 +47,19 @@ const Navbar = () => {
                   key={item.path}
                   to={item.path} 
                   className={cn(
-                    "text-sm font-medium transition-colors hover:text-sky-500",
+                    "text-sm font-medium transition-colors hover:text-sky-500 relative flex items-center gap-1",
                     location.pathname === item.path 
                       ? "text-sky-500 dark:text-sky-400" 
                       : "text-slate-600 dark:text-slate-300"
                   )}
                 >
                   {item.name}
+                  {item.badge && (
+                    <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full animate-pulse shadow-lg shadow-red-500/20">
+                      <Flame className="w-2.5 h-2.5 fill-current" />
+                      HOT
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>

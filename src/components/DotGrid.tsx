@@ -1,9 +1,6 @@
 'use client';
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { gsap } from 'gsap';
-// Note: InertiaPlugin is a premium GSAP plugin. 
-// For this free implementation, we will use standard GSAP animations without the InertiaPlugin dependency
-// to ensure it works in your environment without a license key.
 
 const throttle = (func: (...args: any[]) => void, limit: number) => {
   let lastCall = 0;
@@ -51,10 +48,10 @@ function hexToRgb(hex: string) {
 }
 
 const DotGrid: React.FC<DotGridProps> = ({
-  dotSize = 16,
-  gap = 32,
-  baseColor = '#5227FF',
-  activeColor = '#5227FF',
+  dotSize = 6, // Increased radius as requested
+  gap = 60,    // Increased gap for better visibility
+  baseColor = '#0ea5e9', // Sky blue default
+  activeColor = '#3b82f6',
   proximity = 150,
   speedTrigger = 100,
   shockRadius = 250,
@@ -225,7 +222,6 @@ const DotGrid: React.FC<DotGridProps> = ({
           const pushX = dot.cx - pr.x + vx * 0.005;
           const pushY = dot.cy - pr.y + vy * 0.005;
           
-          // Simplified animation without InertiaPlugin
           gsap.to(dot, {
             xOffset: pushX,
             yOffset: pushY,

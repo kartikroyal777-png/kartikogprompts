@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, PlusSquare, BookOpen, Star, LayoutGrid, Coins } from 'lucide-react';
+import { Home, PlusSquare, BookOpen, Star, LayoutGrid, Coins, Flame } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 
@@ -16,7 +16,7 @@ const BottomNav = () => {
       ? { icon: PlusSquare, label: 'Upload', path: '/upload' }
       : { icon: Coins, label: 'Credits', path: '/buy-credits' },
     { icon: BookOpen, label: 'Ebook', path: '/ebook' },
-    { icon: Star, label: 'Rate Me', path: '/rate-me' }, // Replaced Profile
+    { icon: Star, label: 'Rate Me', path: '/rate-me', badge: true }, // Replaced Profile
   ];
 
   return (
@@ -29,11 +29,18 @@ const BottomNav = () => {
               key={item.path}
               to={item.path}
               className={cn(
-                "flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors duration-200 min-w-[60px]",
+                "relative flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors duration-200 min-w-[60px]",
                 isActive ? "text-sky-500 dark:text-sky-400" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400"
               )}
             >
-              <item.icon className={cn("w-6 h-6 transition-transform", isActive && "scale-110 stroke-[2.5px]")} />
+              <div className="relative">
+                <item.icon className={cn("w-6 h-6 transition-transform", isActive && "scale-110 stroke-[2.5px]")} />
+                {item.badge && (
+                  <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full flex items-center shadow-sm animate-pulse">
+                    <Flame className="w-2 h-2 fill-current" />
+                  </div>
+                )}
+              </div>
               <span className={cn("text-[10px] font-medium", isActive && "font-bold")}>{item.label}</span>
             </Link>
           );

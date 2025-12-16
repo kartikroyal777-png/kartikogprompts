@@ -33,6 +33,9 @@ export default function RateMe() {
   const [customName, setCustomName] = useState('');
   const [refreshLeaderboard, setRefreshLeaderboard] = useState(0);
 
+  // Admin Check
+  const isAdmin = user?.email === 'kartikroyal777@gmail.com';
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selected = e.target.files[0];
@@ -45,6 +48,15 @@ export default function RateMe() {
     if (!file) return;
     setStep('analyzing');
     try {
+      // Fix for "User not found" / Session expiry
+      // We refresh the session to ensure we have a valid token before proceeding
+      const { error: sessionError } = await supabase.auth.getUser();
+      if (sessionError) {
+        // If session is invalid, we don't block analysis (since it uses API key),
+        // but we might warn or handle it. For now, we proceed but log it.
+        console.warn("Session might be expired:", sessionError.message);
+      }
+
       const result = await analyzeImage(file);
       setAnalysis(result);
       setStep('result');
@@ -68,7 +80,10 @@ export default function RateMe() {
   };
 
   const confirmPublish = async () => {
-    if (!user || !file || !analysis) return;
+    if (!user || !file || !analysis) {
+        toast.error("Missing required data.");
+        return;
+    }
     setIsPublishing(true);
 
     try {
@@ -80,7 +95,7 @@ export default function RateMe() {
       };
       const compressedFile = await imageCompression(file, options);
 
-      // 1. Upload Image
+      // 1. Upload Image to Storage
       const fileExt = file.name.split('.').pop();
       const fileName = `rate-me/${user.id}-${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage
@@ -93,23 +108,61 @@ export default function RateMe() {
         .from('prompt-images')
         .getPublicUrl(fileName);
 
-      // 2. Save Entry
-      const { error: dbError } = await supabase
-        .from('rate_me_entries')
-        .insert({
-          user_id: user.id,
-          image_url: publicUrl,
-          gender: gender,
-          parameters: analysis.parameters,
-          ai_base_score: analysis.final_score,
-          is_published: true,
-          player_name: customName || profile?.full_name || 'Anonymous',
-          social_links: socials
-        });
+      // 2. Save Entry to Database
+      // LOGIC:
+      // If Admin: Always INSERT a new row (allows multiple entries).
+      // If Normal User: Check if entry exists for this gender. If yes, UPDATE it. If no, INSERT it.
+      
+      const entryData = {
+        user_id: user.id,
+        image_url: publicUrl,
+        gender: gender,
+        parameters: analysis.parameters,
+        ai_base_score: analysis.final_score,
+        is_published: true,
+        player_name: customName || profile?.full_name || 'Anonymous',
+        social_links: socials,
+        final_score: analysis.final_score // Ensure final_score is set initially
+      };
 
-      if (dbError) throw dbError;
+      if (isAdmin) {
+        // Admin: Always insert new entry
+        const { error: insertError } = await supabase
+          .from('rate_me_entries')
+          .insert(entryData);
+          
+        if (insertError) throw insertError;
+        toast.success("Admin Entry Published!");
 
-      toast.success("Published to Leaderboard!");
+      } else {
+        // Normal User: Check for existing entry first
+        const { data: existingEntry } = await supabase
+            .from('rate_me_entries')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('gender', gender)
+            .maybeSingle();
+
+        if (existingEntry) {
+            // Update existing
+            const { error: updateError } = await supabase
+                .from('rate_me_entries')
+                .update(entryData)
+                .eq('id', existingEntry.id);
+
+            if (updateError) throw updateError;
+            toast.success("Your rating has been updated!");
+        } else {
+            // Insert new
+            const { error: insertError } = await supabase
+                .from('rate_me_entries')
+                .insert(entryData);
+
+            if (insertError) throw insertError;
+            toast.success("Published to Leaderboard!");
+        }
+      }
+
       setShowPublishModal(false);
       setRefreshLeaderboard(prev => prev + 1);
       
@@ -119,8 +172,8 @@ export default function RateMe() {
       }, 500);
 
     } catch (error: any) {
-      console.error(error);
-      toast.error("Failed to publish: " + error.message);
+      console.error("Publish Error:", error);
+      toast.error("Failed to publish: " + (error.message || "Unknown error"));
     } finally {
       setIsPublishing(false);
     }
@@ -133,10 +186,10 @@ export default function RateMe() {
       <div className="fixed inset-0 z-0 opacity-40 pointer-events-none">
         <Suspense fallback={<div className="w-full h-full bg-transparent" />}>
           <DotGrid 
-            baseColor={theme === 'dark' ? '#1e293b' : '#cbd5e1'} 
-            activeColor="#0ea5e9"
-            dotSize={2}
-            gap={24}
+            baseColor={theme === 'dark' ? '#0ea5e9' : '#38bdf8'} // Sky blue for both
+            activeColor="#0284c7"
+            dotSize={6} // Increased size
+            gap={60}    // Increased gap
           />
         </Suspense>
       </div>
@@ -255,7 +308,7 @@ export default function RateMe() {
         </div>
       </div>
 
-      {/* New Sections */}
+      {/* New Sections - Ensure Z-Index is lower than sticky footer */}
       <div className="relative z-10 max-w-7xl mx-auto space-y-24">
         <FeatureAnalysis />
         <FAQ />

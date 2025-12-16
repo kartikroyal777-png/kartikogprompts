@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { RateMeEntry } from '../../types';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronUp, ChevronDown, Instagram, Twitter, Trophy, Crown, Medal, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -238,12 +239,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ refreshTrigger }) => {
         )}
       </div>
 
-      {/* Sticky User Rank Footer - High Z-Index to stay on top */}
-      {user && userRank && !isAdmin && (
+      {/* Sticky User Rank Footer - Rendered via Portal to ensure top layer */}
+      {user && userRank && !isAdmin && createPortal(
         <motion.div 
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-yellow-500/30 p-4 z-[9999] shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]"
+          className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-yellow-500/30 p-4 z-[99999] shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]"
         >
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -266,7 +267,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ refreshTrigger }) => {
               View Top
             </button>
           </div>
-        </motion.div>
+        </motion.div>,
+        document.body
       )}
     </div>
   );

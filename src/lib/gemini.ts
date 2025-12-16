@@ -2,11 +2,13 @@ const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const SITE_URL = window.location.origin;
 const SITE_NAME = "OGPrompts";
 
-// Priority list of free models to try.
-// UPDATED: Using amazon/nova-2-lite-v1:free as requested and removing invalid IDs
+// Expanded priority list of free models to ensure high availability
 const MODELS = [
-  "amazon/nova-2-lite-v1:free",                  // Requested Primary Model
-  "google/gemini-2.0-flash-lite-preview-02-05:free", // Stable Backup
+  "amazon/nova-2-lite-v1:free",                  // Primary (Requested)
+  "google/gemini-2.0-flash-lite-preview-02-05:free", // Stable Backup 1
+  "google/gemini-2.0-pro-exp-02-05:free",        // Stable Backup 2
+  "meta-llama/llama-3.2-11b-vision-instruct:free", // Llama Backup
+  "microsoft/phi-3-vision-128k-instruct:free"    // Microsoft Backup
 ];
 
 if (!OPENROUTER_API_KEY) {
@@ -69,10 +71,33 @@ export async function analyzeImage(file: File): Promise<any> {
   for (const model of MODELS) {
     try {
       // Add a small delay if retrying to avoid rate limits
-      if (lastError) await new Promise(resolve => setTimeout(resolve, 1500));
+      if (lastError) await new Promise(resolve => setTimeout(resolve, 1000));
 
       console.log(`Attempting analysis with model: ${model}`);
       
+      // Only enable reasoning for models that support it (Amazon Nova)
+      const useReasoning = model.includes("nova");
+
+      const body: any = {
+        "model": model,
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              { "type": "text", "text": prompt },
+              { "type": "image_url", "image_url": { "url": dataUrl } }
+            ]
+          }
+        ],
+        "temperature": 0.7,
+        "top_p": 0.9,
+        "response_format": { "type": "json_object" }
+      };
+
+      if (useReasoning) {
+        body.reasoning = { "enabled": true };
+      }
+
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -81,23 +106,7 @@ export async function analyzeImage(file: File): Promise<any> {
           "X-Title": SITE_NAME,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          "model": model,
-          "messages": [
-            {
-              "role": "user",
-              "content": [
-                { "type": "text", "text": prompt },
-                { "type": "image_url", "image_url": { "url": dataUrl } }
-              ]
-            }
-          ],
-          // Enabled reasoning as requested
-          "reasoning": { "enabled": true },
-          "temperature": 0.7,
-          "top_p": 0.9,
-          "response_format": { "type": "json_object" } // Hint for JSON mode
-        })
+        body: JSON.stringify(body)
       });
 
       if (!response.ok) {
@@ -106,20 +115,15 @@ export async function analyzeImage(file: File): Promise<any> {
         
         console.warn(`Model ${model} failed: ${errorMessage}`);
 
-        // Specific handling for common errors
-        if (errorMessage.includes("User not found") || response.status === 403) {
-            lastError = new Error("AI Provider Error (Account). Retrying...");
+        // Handle specific provider errors
+        if (errorMessage.includes("User not found") || response.status === 403 || response.status === 401) {
+            // This usually means the model is not accessible to the account/key
+            lastError = new Error(`Model ${model} unavailable. Retrying...`);
             continue; 
         }
 
         if (response.status === 429 || response.status >= 500) {
             lastError = new Error("AI Service Busy. Retrying...");
-            continue;
-        }
-        
-        // If model ID is invalid (like the error you saw), try next model
-        if (errorMessage.includes("not a valid model ID")) {
-            console.warn("Invalid model ID, skipping...");
             continue;
         }
         

@@ -134,16 +134,16 @@ export default function RateMe() {
         .getPublicUrl(fileName);
 
       // 4. Save Entry to Database
+      // CRITICAL FIX: Do NOT include 'final_score' (generated column). Use 'ai_base_score'.
       const entryData = {
         user_id: freshUser.id,
         image_url: publicUrl,
         gender: gender,
         parameters: analysis.parameters,
-        ai_base_score: analysis.final_score,
+        ai_base_score: analysis.final_score, // Maps to ai_base_score column
         is_published: true,
         player_name: customName || profile?.full_name || 'Anonymous',
-        social_links: socials,
-        final_score: analysis.final_score
+        social_links: socials
       };
 
       if (isAdmin) {

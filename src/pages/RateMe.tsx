@@ -1,6 +1,6 @@
-import React, { useState, Suspense } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, Sparkles, ArrowRight, Loader2, Camera, X } from 'lucide-react';
+import { Sparkles, ArrowRight, Loader2, Camera, X } from 'lucide-react';
 import { analyzeImage } from '../lib/gemini';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -12,9 +12,7 @@ import FAQ from '../components/rate-me/FAQ';
 import AuthModal from '../components/AuthModal';
 import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
-
-// Lazy load the animated background for better performance
-const DotGrid = React.lazy(() => import('../components/DotGrid'));
+import DotGrid from '../components/DotGrid';
 
 export default function RateMe() {
   const { user, profile } = useAuth();
@@ -47,22 +45,43 @@ export default function RateMe() {
   const startAnalysis = async () => {
     if (!file) return;
     setStep('analyzing');
+    
+    // Silent session check
     try {
-      // Fix for "User not found" / Session expiry
-      // We refresh the session to ensure we have a valid token before proceeding
-      const { error: sessionError } = await supabase.auth.getUser();
-      if (sessionError) {
-        // If session is invalid, we don't block analysis (since it uses API key),
-        // but we might warn or handle it. For now, we proceed but log it.
-        console.warn("Session might be expired:", sessionError.message);
+      const { error } = await supabase.auth.getUser();
+      if (error) console.warn("Session check warning:", error.message);
+    } catch (e) {
+      console.warn("Session check failed", e);
+    }
+
+    try {
+      // OPTIMIZATION: Compress image before sending to AI
+      const options = {
+        maxSizeMB: 0.8,
+        maxWidthOrHeight: 1024,
+        useWebWorker: true,
+        fileType: 'image/jpeg'
+      };
+
+      let imageToAnalyze = file;
+      try {
+        imageToAnalyze = await imageCompression(file, options);
+      } catch (compressionError) {
+        console.warn("Compression failed, proceeding with original file:", compressionError);
       }
 
-      const result = await analyzeImage(file);
+      const result = await analyzeImage(imageToAnalyze);
       setAnalysis(result);
       setStep('result');
     } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || "Analysis failed. Please try a clearer photo.");
+      console.error("Analysis Error:", error);
+      
+      // Friendly error message
+      let msg = error.message || "Analysis failed.";
+      if (msg.includes("User not found")) msg = "AI Service is busy. Please try again.";
+      if (msg.includes("Failed to fetch")) msg = "Network error. Please check your connection.";
+      
+      toast.error(msg);
       setStep('upload');
     }
   };
@@ -72,7 +91,6 @@ export default function RateMe() {
       setShowAuthModal(true);
       return;
     }
-    // Pre-fill name if available
     if (!customName && profile?.full_name) {
         setCustomName(profile.full_name);
     }
@@ -80,24 +98,31 @@ export default function RateMe() {
   };
 
   const confirmPublish = async () => {
-    if (!user || !file || !analysis) {
-        toast.error("Missing required data.");
-        return;
-    }
     setIsPublishing(true);
 
     try {
-      // 0. Compress Image for Leaderboard
+      // 1. Verify Session
+      const { data: { user: freshUser }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !freshUser) {
+          throw new Error("Session expired. Please sign in again.");
+      }
+
+      if (!file || !analysis) {
+          throw new Error("Missing required data.");
+      }
+      
+      // 2. Compress Image for Leaderboard Storage
       const options = {
-        maxSizeMB: 0.5, // 500KB max for leaderboard
+        maxSizeMB: 0.5, 
         maxWidthOrHeight: 800,
         useWebWorker: true,
       };
       const compressedFile = await imageCompression(file, options);
 
-      // 1. Upload Image to Storage
+      // 3. Upload Image to Storage
       const fileExt = file.name.split('.').pop();
-      const fileName = `rate-me/${user.id}-${Date.now()}.${fileExt}`;
+      const fileName = `rate-me/${freshUser.id}-${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage
         .from('prompt-images')
         .upload(fileName, compressedFile);
@@ -108,13 +133,9 @@ export default function RateMe() {
         .from('prompt-images')
         .getPublicUrl(fileName);
 
-      // 2. Save Entry to Database
-      // LOGIC:
-      // If Admin: Always INSERT a new row (allows multiple entries).
-      // If Normal User: Check if entry exists for this gender. If yes, UPDATE it. If no, INSERT it.
-      
+      // 4. Save Entry to Database
       const entryData = {
-        user_id: user.id,
+        user_id: freshUser.id,
         image_url: publicUrl,
         gender: gender,
         parameters: analysis.parameters,
@@ -122,42 +143,30 @@ export default function RateMe() {
         is_published: true,
         player_name: customName || profile?.full_name || 'Anonymous',
         social_links: socials,
-        final_score: analysis.final_score // Ensure final_score is set initially
+        final_score: analysis.final_score
       };
 
       if (isAdmin) {
-        // Admin: Always insert new entry
-        const { error: insertError } = await supabase
-          .from('rate_me_entries')
-          .insert(entryData);
-          
+        const { error: insertError } = await supabase.from('rate_me_entries').insert(entryData);
         if (insertError) throw insertError;
         toast.success("Admin Entry Published!");
-
       } else {
-        // Normal User: Check for existing entry first
         const { data: existingEntry } = await supabase
             .from('rate_me_entries')
             .select('id')
-            .eq('user_id', user.id)
+            .eq('user_id', freshUser.id)
             .eq('gender', gender)
             .maybeSingle();
 
         if (existingEntry) {
-            // Update existing
             const { error: updateError } = await supabase
                 .from('rate_me_entries')
                 .update(entryData)
                 .eq('id', existingEntry.id);
-
             if (updateError) throw updateError;
             toast.success("Your rating has been updated!");
         } else {
-            // Insert new
-            const { error: insertError } = await supabase
-                .from('rate_me_entries')
-                .insert(entryData);
-
+            const { error: insertError } = await supabase.from('rate_me_entries').insert(entryData);
             if (insertError) throw insertError;
             toast.success("Published to Leaderboard!");
         }
@@ -166,14 +175,18 @@ export default function RateMe() {
       setShowPublishModal(false);
       setRefreshLeaderboard(prev => prev + 1);
       
-      // Scroll to leaderboard
       setTimeout(() => {
         document.getElementById('leaderboard')?.scrollIntoView({ behavior: 'smooth' });
       }, 500);
 
     } catch (error: any) {
       console.error("Publish Error:", error);
-      toast.error("Failed to publish: " + (error.message || "Unknown error"));
+      let msg = error.message || "Unknown error";
+      if (msg.includes("User not found") || msg.includes("JWT")) {
+          msg = "Session expired. Please sign in again.";
+          setShowAuthModal(true);
+      }
+      toast.error(msg);
     } finally {
       setIsPublishing(false);
     }
@@ -182,16 +195,14 @@ export default function RateMe() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white pt-24 pb-24 px-4 overflow-x-hidden transition-colors duration-300">
       
-      {/* Background Animation - Lazy Loaded */}
+      {/* Background Animation */}
       <div className="fixed inset-0 z-0 opacity-40 pointer-events-none">
-        <Suspense fallback={<div className="w-full h-full bg-transparent" />}>
-          <DotGrid 
-            baseColor={theme === 'dark' ? '#0ea5e9' : '#38bdf8'} // Sky blue for both
-            activeColor="#0284c7"
-            dotSize={6} // Increased size
-            gap={60}    // Increased gap
-          />
-        </Suspense>
+        <DotGrid 
+          baseColor={theme === 'dark' ? '#0ea5e9' : '#38bdf8'}
+          activeColor="#0284c7"
+          dotSize={8}
+          gap={80}
+        />
       </div>
 
       {/* Hero / Intro */}
@@ -308,7 +319,7 @@ export default function RateMe() {
         </div>
       </div>
 
-      {/* New Sections - Ensure Z-Index is lower than sticky footer */}
+      {/* New Sections */}
       <div className="relative z-10 max-w-7xl mx-auto space-y-24">
         <FeatureAnalysis />
         <FAQ />

@@ -48,8 +48,8 @@ function hexToRgb(hex: string) {
 }
 
 const DotGrid: React.FC<DotGridProps> = ({
-  dotSize = 6, // Increased radius as requested
-  gap = 60,    // Increased gap for better visibility
+  dotSize = 8, // Increased default radius/diameter for better visibility
+  gap = 80,    // Increased default gap to reduce density
   baseColor = '#0ea5e9', // Sky blue default
   activeColor = '#3b82f6',
   proximity = 150,

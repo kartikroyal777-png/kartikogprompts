@@ -3,13 +3,10 @@ const SITE_URL = window.location.origin;
 const SITE_NAME = "OGPrompts";
 
 // Priority list of free models to try.
-// If one is rate-limited (429), we automatically try the next.
+// UPDATED: Using amazon/nova-2-lite-v1:free as requested and removing invalid IDs
 const MODELS = [
-  "google/gemini-2.0-flash-lite-preview-02-05:free", // Often faster/more stable
-  "google/gemini-2.0-flash-exp:free",                // High quality but often busy
-  "google/gemini-2.0-pro-exp-02-05:free",            // Powerful fallback
-  "google/gemini-1.5-flash:free",                    // Reliable fallback
-  "google/gemini-1.5-pro:free"                       // Last resort
+  "amazon/nova-2-lite-v1:free",                  // Requested Primary Model
+  "google/gemini-2.0-flash-lite-preview-02-05:free", // Stable Backup
 ];
 
 if (!OPENROUTER_API_KEY) {
@@ -25,46 +22,44 @@ export async function analyzeImage(file: File): Promise<any> {
   const dataUrl = await fileToDataURL(file);
 
   const prompt = `
-    You are an expert AI aesthetic consultant, plastic surgeon, and fashion stylist. 
-    Analyze the visual aesthetics of this image with extreme precision.
+    You are an expert AI aesthetic consultant. Analyze this image with precision.
     
-    Task: Provide a detailed numerical analysis (0-100) of the subject's features.
+    Task: Provide a numerical analysis (0-100) of features.
     
-    Evaluate these specific parameters:
-    1. Facial Symmetry: Left/right face balance and proportion.
-    2. Canthal Tilt & Eye Shape: Aesthetic appeal of the eye tilt (Positive/Neutral tilt preferred in aesthetics).
-    3. Cheekbones: Definition, height, and structure.
-    4. Nose Structure: Harmony with face, shape, and definition.
-    5. Jawline Definition: Sharpness and angularity.
-    6. Skin Quality: Texture, clarity, and radiance.
-    7. Outfit & Styling: Fashion choice and fit.
-    8. Overall Aura: Photogenic quality and vibe.
+    Evaluate:
+    1. Facial Symmetry
+    2. Canthal Tilt & Eyes
+    3. Cheekbones
+    4. Nose
+    5. Jawline
+    6. Skin Quality
+    7. Outfit/Styling
+    8. Overall Aura
 
-    Also provide:
-    - A "Toast": A short, hype compliment about their best feature.
-    - A "Roast": A lighthearted, funny, playful critique (nothing mean).
+    Provide:
+    - "Toast": A short compliment.
+    - "Roast": A short, playful critique.
+    - "final_score": Weighted average (0-100).
 
-    Calculate a "final_score" (weighted average of all parameters) with 3 decimal places.
-
-    IMPORTANT: Return ONLY a valid JSON object. Do not include markdown formatting like \`\`\`json.
+    IMPORTANT: Return ONLY valid, raw JSON. No markdown formatting.
     
     JSON Structure:
     {
       "parameters": {
-        "face": number,        // Overall Facial Harmony
-        "symmetry": number,    // Specific Symmetry Score
-        "canthal_tilt": number,// Eye Tilt Aesthetic Score
-        "cheekbones": number,  // Cheekbone Structure Score
-        "nose": number,        // Nose Harmony Score
-        "jawline": number,
-        "eyes": number,        // General Eye Appeal
-        "skin": number,
-        "outfit": number,
-        "overall": number
+        "face": 0,
+        "symmetry": 0,
+        "canthal_tilt": 0,
+        "cheekbones": 0,
+        "nose": 0,
+        "jawline": 0,
+        "eyes": 0,
+        "skin": 0,
+        "outfit": 0,
+        "overall": 0
       },
       "roast": "string",
       "toast": "string",
-      "final_score": number
+      "final_score": 0
     }
   `;
 
@@ -73,6 +68,9 @@ export async function analyzeImage(file: File): Promise<any> {
   // Try models in sequence until one works
   for (const model of MODELS) {
     try {
+      // Add a small delay if retrying to avoid rate limits
+      if (lastError) await new Promise(resolve => setTimeout(resolve, 1500));
+
       console.log(`Attempting analysis with model: ${model}`);
       
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -89,34 +87,43 @@ export async function analyzeImage(file: File): Promise<any> {
             {
               "role": "user",
               "content": [
-                {
-                  "type": "text",
-                  "text": prompt
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": dataUrl
-                  }
-                }
+                { "type": "text", "text": prompt },
+                { "type": "image_url", "image_url": { "url": dataUrl } }
               ]
             }
-          ]
+          ],
+          // Enabled reasoning as requested
+          "reasoning": { "enabled": true },
+          "temperature": 0.7,
+          "top_p": 0.9,
+          "response_format": { "type": "json_object" } // Hint for JSON mode
         })
       });
 
-      // Handle Rate Limits (429) or Server Errors (5xx) by trying next model
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error?.message || response.statusText;
         
+        console.warn(`Model ${model} failed: ${errorMessage}`);
+
+        // Specific handling for common errors
+        if (errorMessage.includes("User not found") || response.status === 403) {
+            lastError = new Error("AI Provider Error (Account). Retrying...");
+            continue; 
+        }
+
         if (response.status === 429 || response.status >= 500) {
-            console.warn(`Model ${model} failed (Status ${response.status}):`, errorData);
-            lastError = new Error(errorData.error?.message || `Rate limited on ${model}`);
-            continue; // Try next model
+            lastError = new Error("AI Service Busy. Retrying...");
+            continue;
         }
         
-        // Fatal errors (400, 401) should stop immediately
-        throw new Error(errorData.error?.message || `API Error: ${response.status}`);
+        // If model ID is invalid (like the error you saw), try next model
+        if (errorMessage.includes("not a valid model ID")) {
+            console.warn("Invalid model ID, skipping...");
+            continue;
+        }
+        
+        throw new Error(errorMessage || `API Error: ${response.status}`);
       }
 
       const data = await response.json();
@@ -131,7 +138,14 @@ export async function analyzeImage(file: File): Promise<any> {
         throw new Error("AI returned invalid format. Retrying...");
       }
       
-      return JSON.parse(jsonMatch[0]);
+      const parsed = JSON.parse(jsonMatch[0]);
+      
+      // Basic validation
+      if (!parsed.parameters || typeof parsed.final_score !== 'number') {
+         throw new Error("Incomplete data received.");
+      }
+
+      return parsed;
 
     } catch (error: any) {
       console.error(`Analysis failed with ${model}:`, error);
@@ -141,7 +155,7 @@ export async function analyzeImage(file: File): Promise<any> {
   }
 
   // If all models fail
-  throw lastError || new Error("All AI models are currently busy. Please try again in a few moments.");
+  throw lastError || new Error("All AI models are currently busy. Please try again in a moment.");
 }
 
 async function fileToDataURL(file: File): Promise<string> {

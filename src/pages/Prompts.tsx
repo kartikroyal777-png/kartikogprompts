@@ -71,7 +71,7 @@ const Prompts = () => {
               return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
             });
 
-         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
          if (imagesList.length > 0) {
              imageUrl = imagesList[0];
          } else if (p.image) {
@@ -167,15 +167,15 @@ const Prompts = () => {
           </div>
         </div>
 
-        {/* Grid */}
+        {/* Grid - Updated to grid-cols-2 gap-2 for mobile */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="aspect-[4/5] bg-gray-100 dark:bg-slate-900 rounded-2xl animate-pulse border border-gray-200 dark:border-slate-800" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6">
             {filteredPrompts.map((prompt) => (
               <PromptCard key={prompt.id} prompt={prompt} />
             ))}

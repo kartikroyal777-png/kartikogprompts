@@ -68,7 +68,7 @@ const Profile = () => {
                 return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
             });
 
-        let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+        let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
         if (imagesList.length > 0) imageUrl = imagesList[0];
         else if (p.image) imageUrl = p.image;
 
@@ -323,7 +323,7 @@ const Profile = () => {
               {loadingPrompts ? (
                 <div className="text-center py-12 text-slate-400">Loading prompts...</div>
               ) : myPrompts.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6">
                   {myPrompts.map(prompt => (
                     <PromptCard key={prompt.id} prompt={prompt} />
                   ))}

@@ -96,7 +96,7 @@ export default function CreatorProfile() {
           author: profileData.display_name,
           category: p.category,
           likes: p.likes_count || 0,
-          image: imagesList[0] || p.image || 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800?text=No+Image',
+          image: imagesList[0] || p.image || 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800?text=No+Image',
           images: imagesList,
           monetization_url: p.monetization_url,
           is_paid: p.is_paid,
@@ -246,14 +246,14 @@ export default function CreatorProfile() {
           </div>
         </div>
 
-        {/* Prompts Grid */}
+        {/* Prompts Grid - Updated for Mobile 2x3 (gap-2) */}
         <div>
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-sky-500" />
             Creator's Portfolio
           </h2>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6">
             {prompts.map(prompt => (
               <PromptCard 
                 key={prompt.id} 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Lock, Search, Trash2, AlertTriangle, Check, RefreshCw, DollarSign, Clock, List, Plus } from 'lucide-react';
+import { Shield, Lock, Search, Trash2, AlertTriangle, Check, RefreshCw, DollarSign, Clock, List, Plus, Key } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Prompt, PayoutRequest } from '../types';
 
@@ -9,7 +9,7 @@ export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'prompts' | 'payouts' | 'categories'>('prompts');
+  const [activeTab, setActiveTab] = useState<'prompts' | 'payouts' | 'categories' | 'apikeys'>('prompts');
   
   // Prompts State
   const [searchId, setSearchId] = useState('');
@@ -26,6 +26,11 @@ export default function Admin() {
   const [newCategory, setNewCategory] = useState('');
   const [loadingCategories, setLoadingCategories] = useState(false);
 
+  // API Keys State
+  const [apiKeys, setApiKeys] = useState<{id: string, key_value: string, created_at: string}[]>([]);
+  const [newApiKey, setNewApiKey] = useState('');
+  const [loadingApiKeys, setLoadingApiKeys] = useState(false);
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === ADMIN_PASSWORD) {
@@ -34,6 +39,55 @@ export default function Admin() {
       fetchPayouts(); // Fetch payouts on login
     } else {
       setError('Invalid password');
+    }
+  };
+
+  // --- API Keys Logic ---
+  const fetchApiKeys = async () => {
+    setLoadingApiKeys(true);
+    try {
+      const { data, error } = await supabase
+        .from('api_keys')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setApiKeys(data || []);
+    } catch (err) {
+      console.error("Error fetching API keys", err);
+    } finally {
+      setLoadingApiKeys(false);
+    }
+  };
+
+  const handleAddApiKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newApiKey.trim()) return;
+
+    try {
+      const { error } = await supabase.from('api_keys').insert({ 
+        key_value: newApiKey.trim(),
+        provider: 'openrouter'
+      });
+      if (error) throw error;
+      
+      setNewApiKey('');
+      fetchApiKeys();
+      alert('API Key added successfully!');
+    } catch (err: any) {
+      alert('Error adding API key: ' + err.message);
+    }
+  };
+
+  const handleDeleteApiKey = async (id: string) => {
+    if (!confirm("Delete this API Key?")) return;
+    try {
+      const { error } = await supabase.from('api_keys').delete().eq('id', id);
+      if (error) throw error;
+      fetchApiKeys();
+    } catch (err: any) {
+      alert('Error deleting key: ' + err.message);
     }
   };
 
@@ -271,40 +325,29 @@ export default function Admin() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-4 mb-8 border-b border-gray-200 dark:border-slate-800 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('prompts')}
-            className={`pb-4 px-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
-              activeTab === 'prompts' 
-                ? 'text-sky-500' 
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            Manage Prompts
-            {activeTab === 'prompts' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500" />}
-          </button>
-          <button
-            onClick={() => { setActiveTab('payouts'); fetchPayouts(); }}
-            className={`pb-4 px-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
-              activeTab === 'payouts' 
-                ? 'text-sky-500' 
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            Payout Requests
-            {activeTab === 'payouts' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500" />}
-          </button>
-          <button
-            onClick={() => { setActiveTab('categories'); fetchCategories(); }}
-            className={`pb-4 px-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
-              activeTab === 'categories' 
-                ? 'text-sky-500' 
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            Manage Categories
-            {activeTab === 'categories' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500" />}
-          </button>
+        <div className="flex gap-4 mb-8 border-b border-gray-200 dark:border-slate-800 overflow-x-auto no-scrollbar">
+          {[
+            { id: 'prompts', label: 'Manage Prompts' },
+            { id: 'payouts', label: 'Payout Requests', action: fetchPayouts },
+            { id: 'categories', label: 'Manage Categories', action: fetchCategories },
+            { id: 'apikeys', label: 'API Keys', action: fetchApiKeys },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => { 
+                setActiveTab(tab.id as any); 
+                if (tab.action) tab.action(); 
+              }}
+              className={`pb-4 px-4 font-bold text-sm transition-colors relative whitespace-nowrap ${
+                activeTab === tab.id 
+                  ? 'text-sky-500' 
+                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              {tab.label}
+              {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500" />}
+            </button>
+          ))}
         </div>
 
         {/* --- PROMPTS TAB --- */}
@@ -471,6 +514,68 @@ export default function Admin() {
                 ))}
                 {categories.length === 0 && !loadingCategories && (
                   <div className="p-8 text-center text-slate-500">No categories found.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- API KEYS TAB --- */}
+        {activeTab === 'apikeys' && (
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-800 p-6 mb-8">
+              <div className="flex items-center gap-3 mb-4">
+                <Key className="w-6 h-6 text-purple-500" />
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Add OpenRouter API Key</h2>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                These keys are used for the "Rate Me" feature. If a key hits its limit, the system will automatically rotate to the next available key.
+              </p>
+              <form onSubmit={handleAddApiKey} className="flex gap-4">
+                <input
+                  type="text"
+                  value={newApiKey}
+                  onChange={(e) => setNewApiKey(e.target.value)}
+                  className="flex-1 px-4 py-3 border border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none font-mono text-sm"
+                  placeholder="sk-or-v1-..."
+                />
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-colors flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add
+                </button>
+              </form>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-800 overflow-hidden">
+              <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center">
+                <h3 className="font-bold text-slate-900 dark:text-white">Active Keys</h3>
+                <button onClick={fetchApiKeys} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full">
+                  <RefreshCw className={`w-4 h-4 ${loadingApiKeys ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+              
+              <div className="divide-y divide-gray-100 dark:divide-slate-800">
+                {apiKeys.map((key) => (
+                  <div key={key.id} className="p-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                    <div className="flex flex-col">
+                      <span className="text-slate-700 dark:text-slate-300 font-mono text-sm">
+                        {key.key_value.substring(0, 15)}...{key.key_value.substring(key.key_value.length - 4)}
+                      </span>
+                      <span className="text-xs text-slate-400">Added: {new Date(key.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteApiKey(key.id)}
+                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {apiKeys.length === 0 && !loadingApiKeys && (
+                  <div className="p-8 text-center text-slate-500">No API keys found. System will use env variable only.</div>
                 )}
               </div>
             </div>

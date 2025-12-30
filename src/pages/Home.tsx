@@ -1,5 +1,5 @@
 import React, { useEffect, useState, Suspense } from 'react';
-import { Search, Sparkles, ArrowRight, BookOpen, Zap, Star } from 'lucide-react';
+import { Search, Sparkles, ArrowRight, BookOpen, Clock } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import PromptCard from '../components/PromptCard';
 import { supabase } from '../lib/supabase';
@@ -36,7 +36,7 @@ export default function Home() {
           images:prompt_images(storage_path, order_index)
         `)
         .eq('is_published', true)
-        .order('likes_count', { ascending: false })
+        .order('created_at', { ascending: false }) // CHANGED: Show Latest
         .limit(9);
 
       if (error) throw error;
@@ -49,7 +49,7 @@ export default function Home() {
               return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
             });
 
-         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
+         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
          if (imagesList.length > 0) {
              imageUrl = imagesList[0];
          } else if (p.image) {
@@ -63,7 +63,8 @@ export default function Home() {
           image: imageUrl,
           images: imagesList,
           author: p.credit_name || 'Admin',
-          likes: p.likes_count || 0
+          likes: p.likes_count || 0,
+          categories: p.categories || [p.category]
         };
       });
 
@@ -107,7 +108,7 @@ export default function Home() {
           </Suspense>
         </div>
 
-        {/* Existing Grid Background - Kept as requested */}
+        {/* Existing Grid Background */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:linear-gradient(to_bottom,#000_60%,transparent_100%)] pointer-events-none z-0"></div>
         
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 sm:pt-32 sm:pb-32">
@@ -174,15 +175,15 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Trending Section */}
+      {/* Trending Section - Updated to "Latest Drops" */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between mb-8 gap-4 text-center sm:text-left">
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center justify-center sm:justify-start gap-2">
-              <Zap className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-              Trending Now
+              <Clock className="w-6 h-6 text-sky-500 fill-sky-500" />
+              Latest Drops
             </h2>
-            <p className="mt-2 text-gray-500 dark:text-gray-400">Most loved prompts this week</p>
+            <p className="mt-2 text-gray-500 dark:text-gray-400">Fresh prompts added by the community</p>
           </div>
           <Link 
             to="/prompts" 
@@ -193,7 +194,7 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Updated Grid for Mobile - 2x3 (grid-cols-2 gap-2) */}
+        {/* Grid */}
         {loading ? (
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6">
             {[...Array(6)].map((_, i) => (
@@ -224,7 +225,7 @@ export default function Home() {
             <div className="relative grid md:grid-cols-2 gap-8 items-center p-8 sm:p-12">
               <div className="space-y-6">
                 <div className="inline-flex items-center px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 text-sm font-medium">
-                  <Star className="w-4 h-4 mr-2 fill-yellow-500" />
+                  <Sparkles className="w-4 h-4 mr-2 fill-yellow-500" />
                   Premium Resource
                 </div>
                 
@@ -246,7 +247,7 @@ export default function Home() {
                     Get eBook (20 Credits)
                   </Link>
                   <a
-                    href="https://www.instagram.com/ogduo.prompts/"
+                    href="https://www.instagram.com/kartikkumawat.ai/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium backdrop-blur-sm transition-all border border-white/10 hover:scale-105 active:scale-95"

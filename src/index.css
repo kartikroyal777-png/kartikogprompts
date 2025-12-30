@@ -6,6 +6,20 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Ensure the root background matches the theme immediately */
+:root {
+  background-color: #fafafa; /* Light mode default */
+}
+
+:root.dark {
+  background-color: #050505; /* Dark mode default (Requested Color) */
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-300;
+}
+
 /* Custom scrollbar for better aesthetics */
 ::-webkit-scrollbar {
   width: 8px;

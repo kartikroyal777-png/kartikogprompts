@@ -130,6 +130,7 @@ const PromptDetail = () => {
         author: p.credit_name || 'Unknown',
         creator_id: p.creator_id,
         category: p.category,
+        categories: p.categories || [p.category],
         likes: p.likes_count || 0,
         image: primaryImage,
         images: imagesList,
@@ -264,23 +265,26 @@ const PromptDetail = () => {
           className="space-y-8"
         >
           <div>
-            <div className="flex items-center gap-3 mb-6">
-              <span className="px-4 py-1.5 bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 text-sm font-bold rounded-full border border-sky-200 dark:border-sky-800">
-                {prompt.category}
-              </span>
+            <div className="flex flex-wrap items-center gap-2 mb-6">
+              {prompt.categories?.map((cat) => (
+                <span key={cat} className="px-3 py-1 bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 text-xs font-bold rounded-full border border-sky-200 dark:border-sky-800">
+                  {cat}
+                </span>
+              ))}
+              
               {prompt.is_paid && (
-                <span className="px-4 py-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-sm font-bold rounded-full border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold rounded-full border border-amber-200 dark:border-amber-800 flex items-center gap-1">
                   <Lock className="w-3 h-3" />
                   Premium
                 </span>
               )}
               {prompt.is_bundle && (
-                <span className="px-4 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-sm font-bold rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1">
+                <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-bold rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1">
                   <Layers className="w-3 h-3" />
                   Bundle
                 </span>
               )}
-              <span className="text-slate-400 text-sm font-mono">ID: {prompt.promptId}</span>
+              <span className="text-slate-400 text-xs font-mono ml-auto">ID: {prompt.promptId}</span>
             </div>
             
             <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-6 leading-tight">{prompt.title}</h1>

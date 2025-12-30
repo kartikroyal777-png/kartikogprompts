@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Image as ImageIcon, X, Loader2, Coins, Layers } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, Loader2, Coins, Layers, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import imageCompression from 'browser-image-compression';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { cn } from '../lib/utils';
 
 const UploadPage = () => {
   const { user, profile } = useAuth();
@@ -14,6 +15,8 @@ const UploadPage = () => {
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   
   // Dynamic prompts for bundles
   const [promptTexts, setPromptTexts] = useState<string[]>(['']);
@@ -23,7 +26,6 @@ const UploadPage = () => {
     description: '', // Preview text for paid
     full_text: '',   // Main prompt text (for single image)
     video_prompt: '',
-    category: 'Men',
     monetization_url: '',
     credit_name: '',
     instagram_handle: '',
@@ -45,17 +47,21 @@ const UploadPage = () => {
       if (error) throw error;
       if (data && data.length > 0) {
         setCategories(data.map(c => c.name));
-        // Set default category if not set or invalid
-        if (!data.map(c => c.name).includes(formData.category)) {
-          setFormData(prev => ({ ...prev, category: data[0].name }));
+        // Select first by default if empty
+        if (selectedCategories.length === 0) {
+          setSelectedCategories([data[0].name]);
         }
       } else {
         // Fallback
-        setCategories(['Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape']);
+        const defaults = ['Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape'];
+        setCategories(defaults);
+        if (selectedCategories.length === 0) setSelectedCategories([defaults[0]]);
       }
     } catch (err) {
       console.error("Error fetching categories", err);
-      setCategories(['Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape']);
+      const defaults = ['Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape'];
+      setCategories(defaults);
+      if (selectedCategories.length === 0) setSelectedCategories([defaults[0]]);
     }
   };
 
@@ -88,10 +94,14 @@ const UploadPage = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
-      const newPreviews = newFiles.map(file => URL.createObjectURL(file));
-      setFiles(prev => [...prev, ...newFiles]);
-      setPreviews(prev => [...prev, ...newPreviews]);
+      addFiles(newFiles);
     }
+  };
+
+  const addFiles = (newFiles: File[]) => {
+    const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+    setFiles(prev => [...prev, ...newFiles]);
+    setPreviews(prev => [...prev, ...newPreviews]);
   };
 
   const removeFile = (index: number) => {
@@ -102,6 +112,40 @@ const UploadPage = () => {
       return newPreviews.filter((_, i) => i !== index);
     });
     setPromptTexts(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Drag and Drop Handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+      if (droppedFiles.length > 0) {
+        addFiles(droppedFiles);
+      }
+    }
+  };
+
+  const toggleCategory = (category: string) => {
+    setSelectedCategories(prev => {
+      if (prev.includes(category)) {
+        // Don't allow empty selection
+        if (prev.length === 1) return prev;
+        return prev.filter(c => c !== category);
+      } else {
+        return [...prev, category];
+      }
+    });
   };
 
   const handlePromptTextChange = (index: number, value: string) => {
@@ -139,6 +183,11 @@ const UploadPage = () => {
       return;
     }
 
+    if (selectedCategories.length === 0) {
+      alert("Please select at least one category.");
+      return;
+    }
+
     // Validate Price
     if (formData.is_paid) {
       if (formData.price_credits < 0.5 || formData.price_credits > 10) {
@@ -162,7 +211,8 @@ const UploadPage = () => {
           title: formData.title,
           description: promptDescription,
           video_prompt: formData.video_prompt,
-          category: formData.category,
+          category: selectedCategories[0], // Primary category for backward compatibility
+          categories: selectedCategories,    // New Array
           monetization_url: formData.monetization_url,
           credit_name: formData.credit_name || profile?.display_name,
           instagram_handle: formData.instagram_handle,
@@ -250,7 +300,7 @@ const UploadPage = () => {
         </div>
         
         <form onSubmit={handleSubmit} className="p-8 space-y-8">
-          {/* Image Upload */}
+          {/* Image Upload - Drag & Drop */}
           <div className="space-y-4">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
               Prompt Images <span className="text-red-500">*</span>
@@ -273,9 +323,21 @@ const UploadPage = () => {
                 </div>
               ))}
               
-              <label className="relative aspect-square cursor-pointer rounded-lg border-2 border-dashed border-gray-300 dark:border-slate-700 hover:border-sky-500 dark:hover:border-sky-500 transition-colors flex flex-col items-center justify-center bg-gray-50 dark:bg-slate-800/50">
+              <label 
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={cn(
+                  "relative aspect-square cursor-pointer rounded-lg border-2 border-dashed transition-colors flex flex-col items-center justify-center",
+                  isDragging 
+                    ? "border-sky-500 bg-sky-50 dark:bg-sky-900/20" 
+                    : "border-gray-300 dark:border-slate-700 hover:border-sky-500 dark:hover:border-sky-500 bg-gray-50 dark:bg-slate-800/50"
+                )}
+              >
                 <ImageIcon className="h-8 w-8 text-gray-400 mb-2" />
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Add Image</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium text-center px-2">
+                  {isDragging ? 'Drop Here' : 'Drag & Drop or Click'}
+                </span>
                 <input type="file" className="sr-only" accept="image/*" multiple onChange={handleFileChange} />
               </label>
             </div>
@@ -301,16 +363,28 @@ const UploadPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-none"
-              >
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Categories (Select Multiple)</label>
+              <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+                {categories.map(cat => {
+                  const isSelected = selectedCategories.includes(cat);
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => toggleCategory(cat)}
+                      className={cn(
+                        "px-3 py-1 rounded-full text-xs font-bold transition-all border flex items-center gap-1",
+                        isSelected
+                          ? "bg-sky-500 text-white border-sky-500"
+                          : "bg-gray-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-transparent hover:bg-gray-200 dark:hover:bg-slate-600"
+                      )}
+                    >
+                      {isSelected && <Check className="w-3 h-3" />}
+                      {cat}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 

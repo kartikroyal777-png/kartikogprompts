@@ -39,7 +39,8 @@ export interface Prompt {
   tags?: string[];
   author: string;
   creator_id?: string;
-  category: string;
+  category: string; // Keep for backward compatibility display
+  categories: string[]; // New multi-category support
   created_at?: string;
   likes: number;
   is_liked?: boolean;

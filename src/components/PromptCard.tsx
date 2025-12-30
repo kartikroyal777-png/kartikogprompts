@@ -115,9 +115,22 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, onLikeToggle }) => {
         </div>
 
         <div className="space-y-0.5 md:space-y-1 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
-          <span className="inline-block px-1.5 py-0.5 bg-sky-500/90 backdrop-blur-sm text-white text-[8px] md:text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg shadow-sky-500/20">
-            {prompt.category}
-          </span>
+          {/* Categories - Show up to 2 */}
+          <div className="flex flex-wrap gap-1">
+            <span className="inline-block px-1.5 py-0.5 bg-sky-500/90 backdrop-blur-sm text-white text-[8px] md:text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg shadow-sky-500/20">
+              {prompt.category}
+            </span>
+            {prompt.categories && prompt.categories.length > 1 && prompt.categories[1] !== prompt.category && (
+               <span className="inline-block px-1.5 py-0.5 bg-sky-500/90 backdrop-blur-sm text-white text-[8px] md:text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg shadow-sky-500/20">
+                {prompt.categories[1]}
+              </span>
+            )}
+             {prompt.categories && prompt.categories.length > 2 && (
+               <span className="inline-block px-1.5 py-0.5 bg-black/40 backdrop-blur-sm text-white text-[8px] md:text-[10px] font-bold uppercase tracking-wider rounded-full">
+                +{prompt.categories.length - 2}
+              </span>
+            )}
+          </div>
           
           <div className="pointer-events-auto pr-8 md:pr-12"> 
             <h3 className="text-xs md:text-lg font-bold text-white mb-0.5 line-clamp-1 leading-tight">{prompt.title}</h3>

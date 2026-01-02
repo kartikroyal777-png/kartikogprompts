@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sparkles, Upload, Sun, Moon, Coins, LogIn, PlusSquare, User, Flame } from 'lucide-react';
+import { Upload, Sun, Moon, Coins, LogIn, User, Box } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -12,108 +12,106 @@ const Navbar = () => {
   const { user, wallet, profile } = useAuth();
   const [isAuthOpen, setIsAuthOpen] = React.useState(false);
 
-  // Ensure 0 is displayed if wallet exists but balance is 0, or default to 0
   const creditBalance = wallet?.balance_credits ?? 0;
+
+  const navLinks = [
+    { name: 'Prompts', path: '/prompts' },
+    { name: 'Product Prompts', path: '/product-prompts', icon: Box },
+    { name: 'Image to JSON', path: '/image-to-json' },
+    { name: 'Buy Credits', path: '/buy-credits' },
+  ];
 
   return (
     <>
-      <nav className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-7xl bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl border border-gray-200 dark:border-slate-800 rounded-2xl shadow-lg transition-all duration-300">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2 group shrink-0">
-              <div className="relative w-8 h-8 flex items-center justify-center bg-sky-500 rounded-lg shadow-lg shadow-sky-500/20 group-hover:scale-105 transition-transform">
-                 <Sparkles className="h-5 w-5 text-white fill-white" />
+      <nav className="fixed top-4 left-4 right-4 z-50 transition-all duration-300">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white/80 dark:bg-black/80 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl shadow-lg px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+            
+            {/* Logo - Enhanced Visuals */}
+            <Link to="/" className="flex items-center gap-3 group shrink-0">
+              <div className="bg-gradient-to-br from-gray-900 to-black dark:from-white dark:to-gray-200 p-1.5 rounded-xl shadow-lg border border-white/10 dark:border-black/10 transition-transform group-hover:scale-105">
+                <img 
+                  src="https://ik.imagekit.io/7iiagrttq/Untitled%20design%20(2).png" 
+                  alt="OG Prompts" 
+                  className="w-5 h-5 object-contain invert dark:invert-0" 
+                />
               </div>
-              <span className="text-xl font-bold text-slate-800 dark:text-white whitespace-nowrap">
-                <span className="text-sky-500">OG</span> Prompts
+              <span className="text-lg sm:text-xl font-bold text-black dark:text-white tracking-tight">
+                OG Prompts
               </span>
             </Link>
 
             {/* Desktop Nav */}
-            <div className="hidden md:flex items-center gap-8">
-              {[
-                { name: 'Prompts', path: '/prompts' },
-                { name: 'Ebook', path: '/ebook' },
-                { 
-                  name: 'Rate Me', 
-                  path: '/rate-me',
-                  badge: true 
-                },
-                { name: 'Buy Credits', path: '/buy-credits' },
-                ...(user ? [{ name: 'Profile', path: '/profile' }] : []),
-              ].map((item) => (
+            <div className="hidden md:flex items-center gap-6">
+              {navLinks.map((item) => (
                 <Link 
                   key={item.path}
                   to={item.path} 
                   className={cn(
-                    "text-sm font-medium transition-colors hover:text-sky-500 relative flex items-center gap-1",
+                    "text-sm font-bold transition-colors hover:text-black dark:hover:text-white flex items-center gap-1.5",
                     location.pathname === item.path 
-                      ? "text-sky-500 dark:text-sky-400" 
-                      : "text-slate-600 dark:text-slate-300"
+                      ? "text-black dark:text-white" 
+                      : "text-gray-500 dark:text-gray-400"
                   )}
                 >
+                  {item.icon && <item.icon className="w-4 h-4" />}
                   {item.name}
-                  {item.badge && (
-                    <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full animate-pulse shadow-lg shadow-red-500/20">
-                      <Flame className="w-2.5 h-2.5 fill-current" />
-                      HOT
-                    </span>
-                  )}
                 </Link>
               ))}
             </div>
 
             {/* Right Actions */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               
-              {/* Credits Display - Always show if user is logged in, even if 0 */}
+              {/* Credits - Visible on Mobile now */}
               {user && (
                 <Link 
                   to="/buy-credits" 
-                  className="order-1 md:order-none flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-xs sm:text-sm font-bold border border-amber-200 dark:border-amber-800 hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-900 text-black dark:text-white rounded-full text-xs font-bold border border-gray-200 dark:border-gray-800 hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors glow-button"
                 >
-                  <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
+                  <Coins className="w-3.5 h-3.5 fill-current" />
                   {creditBalance}
                 </Link>
               )}
 
-              {/* Theme Toggle */}
+              {/* Theme Toggle - Hidden on Mobile */}
               <button
                 onClick={toggleTheme}
-                className="order-2 md:order-none p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
-                aria-label="Toggle Theme"
+                className="hidden md:block p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-900 text-black dark:text-white transition-colors"
               >
                 {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
               </button>
               
-              {/* Mobile Profile Icon (New) */}
-              {user && (
-                <Link 
-                  to="/profile"
-                  className="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 order-2"
-                >
-                  <User className="w-6 h-6" />
-                </Link>
-              )}
-
-              {/* Removed Mobile Upload Icon as requested */}
-
+              {/* Profile / Auth */}
               {user ? (
-                 <Link
-                  to="/upload"
-                  className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 bg-sky-500 hover:bg-sky-600 text-white text-sm font-bold rounded-full transition-all shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 active:scale-95 order-4"
-                >
-                  <Upload className="h-4 w-4" />
-                  Upload
-                </Link>
+                <div className="flex items-center gap-2">
+                   <Link
+                    to="/upload"
+                    className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-sm font-bold rounded-xl transition-all hover:opacity-90 active:scale-95 glow-button"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload
+                  </Link>
+                  <Link 
+                    to="/profile"
+                    className="p-1 rounded-full border border-gray-200 dark:border-gray-800 hover:opacity-80 transition-opacity"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                        {profile?.avatar_url ? (
+                            <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                            <User className="w-4 h-4 text-gray-500" />
+                        )}
+                    </div>
+                  </Link>
+                </div>
               ) : (
                 <button
                   onClick={() => setIsAuthOpen(true)}
-                  className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-gray-200 text-white dark:text-slate-900 text-sm font-bold rounded-full transition-all shadow-lg active:scale-95 order-4"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-sm font-bold rounded-xl transition-all hover:opacity-90 active:scale-95 glow-button"
                 >
                   <LogIn className="h-4 w-4" />
-                  Sign In
+                  <span className="hidden sm:inline">Sign In</span>
                 </button>
               )}
             </div>

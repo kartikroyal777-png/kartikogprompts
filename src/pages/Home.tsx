@@ -1,5 +1,5 @@
-import React, { useEffect, useState, Suspense } from 'react';
-import { Search, Sparkles, ArrowRight, BookOpen, Clock } from 'lucide-react';
+import React, { useEffect, useState, Suspense, useMemo } from 'react';
+import { Search, Sparkles, ArrowRight, Clock, Box } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import PromptCard from '../components/PromptCard';
 import { supabase } from '../lib/supabase';
@@ -7,8 +7,9 @@ import { Prompt } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import AuthModal from '../components/AuthModal';
+import { getImageUrl } from '../lib/utils';
 
-// OPTIMIZATION: Lazy load the heavy 3D component
+// Lazy load threads to improve initial load performance
 const Threads = React.lazy(() => import('../components/Threads'));
 
 export default function Home() {
@@ -20,8 +21,10 @@ export default function Home() {
   const navigate = useNavigate();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
-  // Google Drive direct image link
-  const ebookImage = "https://lh3.googleusercontent.com/d/1m8rI80MB2hEuKdIk-N7KBb11m7INvj0m";
+  // Memoize color to prevent Threads re-initialization on every render
+  const threadsColor = useMemo<[number, number, number]>(() => 
+    theme === 'dark' ? [1, 1, 1] : [0, 0, 0], 
+  [theme]);
 
   useEffect(() => {
     fetchPrompts();
@@ -36,7 +39,8 @@ export default function Home() {
           images:prompt_images(storage_path, order_index)
         `)
         .eq('is_published', true)
-        .order('created_at', { ascending: false }) // CHANGED: Show Latest
+        .eq('prompt_type', 'standard')
+        .order('created_at', { ascending: false })
         .limit(9);
 
       if (error) throw error;
@@ -44,24 +48,20 @@ export default function Home() {
       const formattedPrompts = (data || []).map((p: any) => {
          const imagesList = (p.images || [])
             .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
-            .map((img: any) => {
-              if (img.storage_path.startsWith('http')) return img.storage_path;
-              return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
-            });
+            .map((img: any) => getImageUrl(img.storage_path));
 
-         let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
-         if (imagesList.length > 0) {
-             imageUrl = imagesList[0];
-         } else if (p.image) {
-            imageUrl = p.image;
-         }
+        // Use the new robust helper for image resolution
+        let imageUrl = imagesList[0];
+        if (!imageUrl) {
+           imageUrl = getImageUrl(p.image);
+        }
 
         return {
           ...p,
           short_id: p.short_id,
           promptId: p.short_id ? p.short_id.toString() : p.id.substring(0, 5),
           image: imageUrl,
-          images: imagesList,
+          images: imagesList.length > 0 ? imagesList : [imageUrl],
           author: p.credit_name || 'Admin',
           likes: p.likes_count || 0,
           categories: p.categories || [p.category]
@@ -86,86 +86,81 @@ export default function Home() {
 
   const filteredPrompts = prompts.filter(prompt => 
     prompt.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    prompt.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (prompt.category && prompt.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    prompt.promptId.includes(searchQuery)
+    prompt.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-black transition-colors duration-300">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+      <div className="relative overflow-hidden border-b border-gray-200 dark:border-gray-800">
         
-        {/* Threads Background - Optimized with Lazy Loading and Suspense */}
-        <div className="absolute inset-0 z-0 opacity-60">
-          <Suspense fallback={<div className="w-full h-full bg-transparent" />}>
+        {/* Checkered Background (Behind Threads) */}
+        <div className="absolute inset-0 z-0 bg-grid-checks opacity-50 pointer-events-none" />
+
+        {/* Optimized Threads Background */}
+        <div className="absolute inset-0 z-10 opacity-40 pointer-events-none">
+          <Suspense fallback={<div />}>
             <Threads
-              amplitude={1}
+              amplitude={1.5}
               distance={0}
               enableMouseInteraction={true}
-              color={theme === 'dark' ? [1, 1, 1] : [0, 0, 0]}
+              color={threadsColor}
             />
           </Suspense>
         </div>
-
-        {/* Existing Grid Background */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:linear-gradient(to_bottom,#000_60%,transparent_100%)] pointer-events-none z-0"></div>
         
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-24 sm:pt-32 sm:pb-32">
-          <div className="text-center space-y-8 max-w-3xl mx-auto">
+        <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-40 pb-24 text-center">
+          <div className="space-y-8 max-w-4xl mx-auto">
             <div className="flex justify-center">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300 ring-1 ring-inset ring-sky-600/20 backdrop-blur-sm">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-gray-100 dark:bg-gray-900 text-black dark:text-white border border-gray-200 dark:border-gray-800">
                 <Sparkles className="w-4 h-4 mr-2" />
                 The #1 AI Prompt Library
               </span>
             </div>
             
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-gray-900 dark:text-white leading-tight">
-              Free, Open-Source <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-500 to-blue-600">AI Prompts</span>
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-black dark:text-white leading-[1.1]">
+              Free, Open-Source <br/>
+              <span className="text-gray-500 dark:text-gray-400">AI Prompts</span>
             </h1>
             
-            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto font-normal leading-relaxed">
-              The #1 free platform to discover and share high-quality AI art prompts. 
+            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
+              Discover and share high-quality AI art prompts. 
               Totally free, no sign-up required.
             </p>
 
             {/* Search Bar */}
-            <div className="max-w-md mx-auto relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-sky-500 to-blue-500 rounded-full blur opacity-30 group-hover:opacity-50 transition duration-200"></div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-3.5 bg-white dark:bg-gray-900 border-0 text-gray-900 dark:text-white placeholder:text-gray-500 ring-1 ring-inset ring-gray-200 dark:ring-gray-700 focus:ring-2 focus:ring-inset focus:ring-sky-500 rounded-full text-sm sm:text-base shadow-sm transition-all"
-                  placeholder="Search prompts (e.g. 'cinematic', '10012')..."
-                />
+            <div className="max-w-md mx-auto relative glow-focus rounded-full">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
               </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="block w-full pl-11 pr-4 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-black dark:text-white rounded-full focus:outline-none transition-all shadow-sm"
+                placeholder="Search prompts..."
+              />
             </div>
 
             <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
               <Link
                 to="/prompts"
-                className="inline-flex justify-center items-center px-8 py-3.5 rounded-full text-white bg-sky-500 hover:bg-sky-600 font-bold transition-all shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 hover:scale-105 active:scale-95 duration-300"
+                className="bg-black dark:bg-white text-white dark:text-black font-bold px-8 py-4 rounded-full text-lg hover:opacity-90 transition-opacity glow-button"
               >
-                Browse All Prompts
+                Browse Prompts
               </Link>
               
-              {/* Dynamic Button based on role */}
               {profile?.creator_badge ? (
                 <Link
                   to="/upload"
-                  className="inline-flex justify-center items-center px-8 py-3.5 rounded-full text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 font-bold transition-all shadow-sm hover:scale-105 active:scale-95 duration-300"
+                  className="bg-gray-100 dark:bg-gray-900 text-black dark:text-white font-bold px-8 py-4 rounded-full text-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors glow-button"
                 >
                   Upload Prompt
                 </Link>
               ) : (
                 <button
                   onClick={handleBecomeCreatorClick}
-                  className="inline-flex justify-center items-center px-8 py-3.5 rounded-full text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 font-bold transition-all shadow-lg shadow-purple-500/25 hover:scale-105 active:scale-95 duration-300"
+                  className="bg-gray-100 dark:bg-gray-900 text-black dark:text-white font-bold px-8 py-4 rounded-full text-lg border border-gray-200 dark:border-gray-800 hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors glow-button"
                 >
                   Become a Creator
                 </button>
@@ -175,101 +170,54 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Trending Section - Updated to "Latest Drops" */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between mb-8 gap-4 text-center sm:text-left">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center justify-center sm:justify-start gap-2">
-              <Clock className="w-6 h-6 text-sky-500 fill-sky-500" />
-              Latest Drops
-            </h2>
-            <p className="mt-2 text-gray-500 dark:text-gray-400">Fresh prompts added by the community</p>
-          </div>
-          <Link 
-            to="/prompts" 
-            className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-5 py-2.5 bg-sky-50 dark:bg-sky-900/20 text-sky-600 dark:text-sky-400 font-semibold rounded-full hover:bg-sky-100 dark:hover:bg-sky-900/40 transition-all hover:scale-105 active:scale-95"
-          >
-            View All Prompts
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+      {/* Latest Drops */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl font-bold text-black dark:text-white flex items-center gap-2">
+            <Clock className="w-6 h-6" />
+            Latest Drops
+          </h2>
+          <Link to="/prompts" className="text-sm font-bold hover:underline">View All</Link>
         </div>
 
-        {/* Grid */}
         {loading ? (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl h-64 sm:h-96 animate-pulse border border-gray-200 dark:border-gray-700" />
+              <div key={i} className="aspect-[4/5] bg-gray-100 dark:bg-gray-900 rounded-2xl animate-pulse" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6">
-            {filteredPrompts.length > 0 ? (
-              filteredPrompts.map((prompt) => (
-                <PromptCard key={prompt.id} prompt={prompt} />
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <p className="text-gray-500 dark:text-gray-400 text-lg">No prompts found matching your search.</p>
-              </div>
-            )}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredPrompts.map((prompt) => (
+              <PromptCard key={prompt.id} prompt={prompt} />
+            ))}
           </div>
         )}
       </div>
 
-      {/* Ebook Teaser Section */}
-      <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-          <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 dark:from-black dark:to-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-700">
-            <div className="absolute inset-0 bg-grid-white/[0.05] [mask-image:linear-gradient(0deg,transparent,black)]" />
-            
-            <div className="relative grid md:grid-cols-2 gap-8 items-center p-8 sm:p-12">
-              <div className="space-y-6">
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 text-sm font-medium">
-                  <Sparkles className="w-4 h-4 mr-2 fill-yellow-500" />
-                  Premium Resource
+      {/* Product Prompts Teaser */}
+      <div className="bg-gray-50 dark:bg-gray-950">
+        <div className="max-w-7xl mx-auto px-4 py-16">
+            <div className="bg-black dark:bg-white rounded-3xl p-8 md:p-12 text-white dark:text-black relative overflow-hidden glow-button">
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div className="space-y-4 max-w-xl">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 dark:bg-black/10 rounded-full text-xs font-bold">
+                            <Box className="w-4 h-4" />
+                            NEW FEATURE
+                        </div>
+                        <h2 className="text-3xl md:text-4xl font-black">Product Photography Prompts</h2>
+                        <p className="text-gray-300 dark:text-gray-600 text-lg">
+                            Dedicated prompts for brands, startups, and agencies. Create stunning product shots with consistent style and branding.
+                        </p>
+                        <Link to="/product-prompts" className="inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-black text-black dark:text-white font-bold rounded-xl hover:opacity-90 transition-opacity">
+                            Explore Product Prompts <ArrowRight className="w-4 h-4" />
+                        </Link>
+                    </div>
+                    <div className="w-full md:w-1/3 aspect-square bg-gray-800 dark:bg-gray-200 rounded-2xl flex items-center justify-center">
+                        <Box className="w-24 h-24 text-gray-600 dark:text-gray-400" />
+                    </div>
                 </div>
-                
-                <h2 className="text-3xl sm:text-4xl font-bold text-white">
-                  Stop Paying for AI Tools.
-                  <span className="block text-slate-400 text-xl sm:text-2xl mt-2 font-normal">Unlock Premium Access Legally.</span>
-                </h2>
-                
-                <p className="text-slate-400 text-lg">
-                  Get our "AI Access Mastery" eBook and learn how to use Veo 3, Sora 2, and Midjourney without expensive monthly subscriptions.
-                </p>
-                
-                <div className="flex flex-col sm:flex-row gap-4 pt-2">
-                  <Link
-                    to="/ebook"
-                    className="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-bold shadow-lg shadow-sky-900/20 transition-all hover:-translate-y-0.5 hover:scale-105 active:scale-95"
-                  >
-                    <BookOpen className="w-5 h-5 mr-2" />
-                    Get eBook (20 Credits)
-                  </Link>
-                  <a
-                    href="https://www.instagram.com/kartikkumawat.ai/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex justify-center items-center px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium backdrop-blur-sm transition-all border border-white/10 hover:scale-105 active:scale-95"
-                  >
-                    DM for Discount
-                  </a>
-                </div>
-              </div>
-              
-              <div className="relative flex justify-center md:justify-end">
-                <div className="relative w-64 sm:w-72 aspect-[2/3] group perspective-1000">
-                  <div className="absolute -inset-4 bg-sky-500/30 rounded-full blur-3xl group-hover:bg-sky-500/40 transition-all duration-500" />
-                  <img 
-                    src={ebookImage}
-                    alt="AI Access Mastery eBook Cover" 
-                    className="relative w-full h-full object-cover rounded-lg shadow-2xl transform rotate-y-12 group-hover:rotate-y-0 transition-transform duration-700 ease-out"
-                    style={{ transformStyle: 'preserve-3d' }}
-                  />
-                </div>
-              </div>
             </div>
-          </div>
         </div>
       </div>
 

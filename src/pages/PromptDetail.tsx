@@ -11,6 +11,8 @@ import { useAuth } from '../context/AuthContext';
 import UnlockModal from '../components/UnlockModal';
 import AuthModal from '../components/AuthModal';
 import ShareModal from '../components/ShareModal';
+import toast from 'react-hot-toast';
+import { getImageUrl } from '../lib/utils';
 
 interface BundleItem {
   index: number;
@@ -47,23 +49,17 @@ const PromptDetail = () => {
 
   const fetchPromptDetail = async () => {
     try {
-      // 1. Fetch Public Prompt Data
       const { data: p, error } = await supabase
         .from('prompts')
-        .select(`
-          *,
-          images:prompt_images(storage_path, order_index)
-        `)
+        .select(`*, images:prompt_images(storage_path, order_index)`)
         .eq('id', id)
         .single();
 
       if (error) throw error;
 
-      // 2. Check Unlock Status
-      let unlocked = !p.is_paid; // Free prompts are unlocked by default
+      let unlocked = !p.is_paid;
       
       if (user && p.is_paid) {
-        // Check if user bought this prompt
         const { data: purchase } = await supabase
           .from('prompt_purchases')
           .select('id')
@@ -73,7 +69,6 @@ const PromptDetail = () => {
           
         if (purchase) unlocked = true;
         
-        // Check if user has unlocked the creator
         if (!unlocked && p.creator_id) {
             const { data: creatorUnlock } = await supabase
                 .from('creator_unlocks')
@@ -84,14 +79,12 @@ const PromptDetail = () => {
             if (creatorUnlock) unlocked = true;
         }
 
-        // Check if user is the creator
         if (p.creator_id === user.id) unlocked = true;
       }
 
       setIsUnlocked(unlocked);
 
-      // 3. Fetch Full Text (if unlocked)
-      let textContent = p.description; // Default to description (preview)
+      let textContent = p.description;
       let bundleContent: BundleItem[] = [];
       
       if (unlocked) {
@@ -107,24 +100,21 @@ const PromptDetail = () => {
         }
       }
 
-      // Process images
       const imagesList = (p.images || [])
         .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
-        .map((img: any) => {
-          if (img.storage_path.startsWith('http')) return img.storage_path;
-          return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
-        });
+        .map((img: any) => getImageUrl(img.storage_path));
 
-      let primaryImage = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
-      if (imagesList.length > 0) primaryImage = imagesList[0];
-      else if (p.image) primaryImage = p.image;
+      let primaryImage = imagesList[0];
+      if (!primaryImage) {
+         primaryImage = getImageUrl(p.image);
+      }
 
       const promptData: Prompt = {
         id: p.id,
         short_id: p.short_id,
         promptId: p.short_id ? p.short_id.toString() : p.id.substring(0, 5),
         title: p.title,
-        description: p.description, // Preview text
+        description: p.description,
         full_text: textContent,
         video_prompt: p.video_prompt,
         author: p.credit_name || 'Unknown',
@@ -133,12 +123,13 @@ const PromptDetail = () => {
         categories: p.categories || [p.category],
         likes: p.likes_count || 0,
         image: primaryImage,
-        images: imagesList,
+        images: imagesList.length > 0 ? imagesList : [primaryImage],
         monetization_url: p.monetization_url,
         instagram_handle: p.instagram_handle,
         is_paid: p.is_paid,
         price_credits: p.price_credits,
-        is_bundle: p.is_bundle
+        is_bundle: p.is_bundle,
+        prompt_type: p.prompt_type
       };
 
       setPrompt(promptData);
@@ -168,8 +159,8 @@ const PromptDetail = () => {
       const { data, error } = await supabase.rpc('unlock_prompt', { p_prompt_id: prompt.id });
       if (error) throw error;
       
-      await refreshProfile(); // Update wallet balance
-      await fetchPromptDetail(); // Refresh prompt to get full text
+      await refreshProfile();
+      await fetchPromptDetail();
       setShowUnlockModal(false);
       alert("Prompt unlocked successfully!");
     } catch (error: any) {
@@ -188,34 +179,78 @@ const PromptDetail = () => {
   };
 
   const handleCopy = (text: string, index?: number) => {
-    navigator.clipboard.writeText(text);
-    if (index !== undefined) {
-      setCopiedIndex(index);
-      setTimeout(() => setCopiedIndex(null), 2000);
-    } else {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    if (!text) {
+        toast.error("Nothing to copy!");
+        return;
     }
+    
+    const onSuccess = () => {
+        if (index !== undefined) {
+            setCopiedIndex(index);
+            setTimeout(() => setCopiedIndex(null), 2000);
+        } else {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+        toast.success("Copied to clipboard!");
+    };
+
+    // Try modern API first
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(onSuccess).catch(err => {
+            console.error("Clipboard write failed", err);
+            fallbackCopy(text, onSuccess);
+        });
+    } else {
+        fallbackCopy(text, onSuccess);
+    }
+  };
+
+  const fallbackCopy = (text: string, onSuccess: () => void) => {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      
+      // Ensure it's not visible but part of the DOM
+      textArea.style.opacity = "0";
+      textArea.style.pointerEvents = "none";
+      textArea.style.position = "fixed";
+      textArea.style.left = "0";
+      textArea.style.top = "0";
+      document.body.appendChild(textArea);
+      
+      textArea.focus();
+      textArea.select();
+      
+      try {
+          const successful = document.execCommand('copy');
+          if (successful) onSuccess();
+          else toast.error("Failed to copy");
+      } catch (err) {
+          console.error('Fallback copy failed', err);
+          toast.error("Failed to copy");
+      }
+      
+      document.body.removeChild(textArea);
   };
 
   const handleVideoCopy = () => {
     if (!prompt?.video_prompt) return;
-    navigator.clipboard.writeText(prompt.video_prompt);
+    handleCopy(prompt.video_prompt);
     setVideoCopied(true);
     setTimeout(() => setVideoCopied(false), 2000);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center dark:bg-slate-950 dark:text-white"><div className="animate-pulse">Loading...</div></div>;
-  if (!prompt) return <div className="min-h-screen flex items-center justify-center dark:bg-slate-950 dark:text-white">Prompt not found</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center dark:bg-black dark:text-white"><div className="animate-pulse">Loading...</div></div>;
+  if (!prompt) return <div className="min-h-screen flex items-center justify-center dark:bg-black dark:text-white">Prompt not found</div>;
 
   const imagesToDisplay = prompt.images && prompt.images.length > 0 ? prompt.images : [prompt.image];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 pb-24 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-black pb-24 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 pt-28">
         <button 
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 transition-colors font-medium"
+          className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white transition-colors font-medium"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Prompts
@@ -228,7 +263,7 @@ const PromptDetail = () => {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl bg-gray-100 dark:bg-slate-900 border border-gray-100 dark:border-slate-800 relative group"
+            className="aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl bg-gray-100 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 relative group"
           >
             <ImageCarousel images={imagesToDisplay} alt={prompt.title} />
           </motion.div>
@@ -240,8 +275,8 @@ const PromptDetail = () => {
               className={cn(
                 "flex-1 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm",
                 isLiked 
-                  ? "bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-900/30" 
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  ? "bg-black text-white dark:bg-white dark:text-black" 
+                  : "bg-slate-100 dark:bg-gray-900 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-gray-800"
               )}
             >
               <Heart className={cn("w-5 h-5", isLiked && "fill-current")} />
@@ -250,7 +285,7 @@ const PromptDetail = () => {
             <motion.button 
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowShareModal(true)}
-              className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm"
+              className="flex-1 py-4 bg-slate-100 dark:bg-gray-900 hover:bg-slate-200 dark:hover:bg-gray-800 text-slate-700 dark:text-slate-300 font-bold rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm"
             >
               <Share2 className="w-5 h-5" />
               Share
@@ -267,19 +302,19 @@ const PromptDetail = () => {
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-6">
               {prompt.categories?.map((cat) => (
-                <span key={cat} className="px-3 py-1 bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 text-xs font-bold rounded-full border border-sky-200 dark:border-sky-800">
+                <span key={cat} className="px-3 py-1 bg-gray-100 dark:bg-gray-900 text-black dark:text-white text-xs font-bold rounded-full border border-gray-200 dark:border-gray-800">
                   {cat}
                 </span>
               ))}
               
               {prompt.is_paid && (
-                <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold rounded-full border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                <span className="px-3 py-1 bg-black dark:bg-white text-white dark:text-black text-xs font-bold rounded-full flex items-center gap-1">
                   <Lock className="w-3 h-3" />
                   Premium
                 </span>
               )}
               {prompt.is_bundle && (
-                <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 text-xs font-bold rounded-full border border-purple-200 dark:border-purple-800 flex items-center gap-1">
+                <span className="px-3 py-1 bg-gray-200 dark:bg-gray-800 text-black dark:text-white text-xs font-bold rounded-full flex items-center gap-1">
                   <Layers className="w-3 h-3" />
                   Bundle
                 </span>
@@ -291,35 +326,35 @@ const PromptDetail = () => {
             
             <Link 
               to={prompt.creator_id ? `/creator/${prompt.creator_id}` : '#'}
-              className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
+              className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-gray-900 rounded-2xl border border-slate-100 dark:border-gray-800 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors group"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-sky-400 to-blue-600 rounded-full flex items-center justify-center text-white shadow-lg group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 bg-black dark:bg-white rounded-full flex items-center justify-center text-white dark:text-black shadow-lg group-hover:scale-105 transition-transform">
                 <span className="text-sm font-bold">{prompt.author[0].toUpperCase()}</span>
               </div>
               <div className="flex-1">
                 <div className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Created by</div>
                 <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
                   {prompt.author}
-                  {prompt.creator_id && <Sparkles className="w-3 h-3 text-purple-500" />}
+                  {prompt.creator_id && <Sparkles className="w-3 h-3 text-black dark:text-white" />}
                 </div>
               </div>
-              <div className="p-2 bg-white dark:bg-slate-800 rounded-full text-slate-400 group-hover:text-sky-500 transition-colors">
+              <div className="p-2 bg-white dark:bg-black rounded-full text-slate-400 group-hover:text-black dark:group-hover:text-white transition-colors">
                 <ArrowLeft className="w-5 h-5 rotate-180" />
               </div>
             </Link>
           </div>
 
           {/* Prompt Box */}
-          <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 relative group shadow-sm overflow-hidden">
+          <div className="bg-slate-50 dark:bg-gray-900 rounded-3xl border border-slate-200 dark:border-gray-800 p-6 md:p-8 relative group shadow-sm overflow-hidden">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                <span className="w-2 h-2 bg-sky-500 rounded-full animate-pulse"/>
+                <span className="w-2 h-2 bg-black dark:bg-white rounded-full animate-pulse"/>
                 {prompt.is_bundle ? 'Bundle Prompts' : 'Prompt'}
               </h3>
               {isUnlocked && !prompt.is_bundle && (
                 <button
                   onClick={() => handleCopy(fullText || '')}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-sky-500 dark:hover:text-sky-400 transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-black border border-slate-200 dark:border-gray-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white transition-colors"
                 >
                   {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                   {copied ? 'Copied!' : 'Copy Text'}
@@ -340,7 +375,7 @@ const PromptDetail = () => {
                     <div className="flex flex-col gap-3 w-full max-w-xs">
                       <button
                         onClick={handleUnlockClick}
-                        className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-500/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+                        className="px-6 py-3 bg-black dark:bg-white hover:opacity-80 text-white dark:text-black font-bold rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
                       >
                         <Unlock className="w-5 h-5" />
                         Unlock for {prompt.price_credits} Credits
@@ -349,9 +384,9 @@ const PromptDetail = () => {
                       {prompt.creator_id && (
                         <Link
                           to={`/creator/${prompt.creator_id}`}
-                          className="px-6 py-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                          className="px-6 py-3 bg-white dark:bg-black border border-gray-200 dark:border-gray-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
                         >
-                          <Sparkles className="w-5 h-5 text-purple-500" />
+                          <Sparkles className="w-5 h-5 text-black dark:text-white" />
                           Unlock All from Creator
                         </Link>
                       )}
@@ -364,12 +399,12 @@ const PromptDetail = () => {
                   {prompt.is_bundle && bundleData.length > 0 ? (
                     <div className="space-y-6">
                       {bundleData.map((item, idx) => (
-                        <div key={idx} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700">
+                        <div key={idx} className="bg-white dark:bg-black p-4 rounded-xl border border-gray-200 dark:border-gray-700">
                           <div className="flex justify-between items-center mb-2">
                             <span className="text-xs font-bold text-slate-500 uppercase">Image {idx + 1}</span>
                             <button
                               onClick={() => handleCopy(item.text, idx)}
-                              className="text-xs flex items-center gap-1 text-sky-500 hover:text-sky-600"
+                              className="text-xs flex items-center gap-1 text-black dark:text-white hover:underline"
                             >
                               {copiedIndex === idx ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                               Copy
@@ -393,15 +428,15 @@ const PromptDetail = () => {
 
           {/* Video Prompt Box */}
           {prompt.video_prompt && isUnlocked && (
-            <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 relative group shadow-sm">
+            <div className="bg-slate-50 dark:bg-gray-900 rounded-3xl border border-slate-200 dark:border-gray-800 p-6 md:p-8 relative group shadow-sm">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                  <Video className="w-4 h-4 text-purple-500" />
+                  <Video className="w-4 h-4 text-black dark:text-white" />
                   Video Prompt
                 </h3>
                 <button
                   onClick={handleVideoCopy}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-purple-500 dark:hover:text-purple-400 transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-black border border-slate-200 dark:border-gray-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white transition-colors"
                 >
                   {videoCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                   {videoCopied ? 'Copied!' : 'Copy Text'}
@@ -419,14 +454,14 @@ const PromptDetail = () => {
               href={prompt.monetization_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block p-6 bg-gradient-to-r from-sky-500 to-blue-600 rounded-2xl shadow-lg shadow-sky-500/20 group hover:shadow-sky-500/30 transition-all transform hover:-translate-y-1"
+              className="block p-6 bg-black dark:bg-white rounded-2xl shadow-lg group hover:opacity-90 transition-all transform hover:-translate-y-1"
             >
-              <div className="flex items-center justify-between text-white">
+              <div className="flex items-center justify-between text-white dark:text-black">
                 <div>
                   <h4 className="font-bold text-lg mb-1">Get Full Resource / Support Creator</h4>
-                  <p className="text-sky-100 text-sm">Visit the creator's link for more details</p>
+                  <p className="text-gray-400 dark:text-gray-600 text-sm">Visit the creator's link for more details</p>
                 </div>
-                <div className="bg-white/20 p-2 rounded-full group-hover:bg-white/30 transition-colors">
+                <div className="bg-white/20 dark:bg-black/10 p-2 rounded-full transition-colors">
                   <ExternalLink className="w-6 h-6" />
                 </div>
               </div>

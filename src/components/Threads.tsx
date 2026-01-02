@@ -23,7 +23,6 @@ void main() {
 
 const fragmentShader = `
 precision highp float;
-
 uniform float iTime;
 uniform vec3 iResolution;
 uniform vec3 uColor;
@@ -33,10 +32,10 @@ uniform vec2 uMouse;
 
 #define PI 3.1415926538
 
-// OPTIMIZATION: Reduced from 40 to 25 to improve FPS on mobile/laptops
-const int u_line_count = 25;
-const float u_line_width = 7.0;
-const float u_line_blur = 10.0;
+// Reduced line count for better performance (was 40, then 10)
+const int u_line_count = 8;
+const float u_line_width = 2.0;
+const float u_line_blur = 2.0;
 
 float Perlin2D(vec2 P) {
     vec2 Pi = floor(P);
@@ -50,11 +49,9 @@ float Perlin2D(vec2 P) {
     vec4 hash_y = fract(Pt * (1.0 / 642.949883));
     vec4 grad_x = hash_x - 0.49999;
     vec4 grad_y = hash_y - 0.49999;
-    vec4 grad_results = inversesqrt(grad_x * grad_x + grad_y * grad_y)
-        * (grad_x * Pf_Pfmin1.xzxz + grad_y * Pf_Pfmin1.yyww);
+    vec4 grad_results = inversesqrt(grad_x * grad_x + grad_y * grad_y) * (grad_x * Pf_Pfmin1.xzxz + grad_y * Pf_Pfmin1.yyww);
     grad_results *= 1.4142135623730950;
-    vec2 blend = Pf_Pfmin1.xy * Pf_Pfmin1.xy * Pf_Pfmin1.xy
-               * (Pf_Pfmin1.xy * (Pf_Pfmin1.xy * 6.0 - 15.0) + 10.0);
+    vec2 blend = Pf_Pfmin1.xy * Pf_Pfmin1.xy * Pf_Pfmin1.xy * (Pf_Pfmin1.xy * (Pf_Pfmin1.xy * 6.0 - 15.0) + 10.0);
     vec4 blend2 = vec4(blend, vec2(1.0 - blend));
     return dot(grad_results, blend2.zxzx * blend2.wwyy);
 }
@@ -66,60 +63,25 @@ float pixel(float count, vec2 resolution) {
 float lineFn(vec2 st, float width, float perc, float offset, vec2 mouse, float time, float amplitude, float distance) {
     float split_offset = (perc * 0.4);
     float split_point = 0.1 + split_offset;
-
     float amplitude_normal = smoothstep(split_point, 0.7, st.x);
     float amplitude_strength = 0.5;
-    float finalAmplitude = amplitude_normal * amplitude_strength
-                           * amplitude * (1.0 + (mouse.y - 0.5) * 0.2);
-
+    float finalAmplitude = amplitude_normal * amplitude_strength * amplitude * (1.0 + (mouse.y - 0.5) * 0.2);
     float time_scaled = time / 10.0 + (mouse.x - 0.5) * 1.0;
     float blur = smoothstep(split_point, split_point + 0.05, st.x) * perc;
-
-    float xnoise = mix(
-        Perlin2D(vec2(time_scaled, st.x + perc) * 2.5),
-        Perlin2D(vec2(time_scaled, st.x + time_scaled) * 3.5) / 1.5,
-        st.x * 0.3
-    );
-
+    float xnoise = mix(Perlin2D(vec2(time_scaled, st.x + perc) * 2.5), Perlin2D(vec2(time_scaled, st.x + time_scaled) * 3.5) / 1.5, st.x * 0.3);
     float y = 0.5 + (perc - 0.5) * distance + xnoise / 2.0 * finalAmplitude;
-
-    float line_start = smoothstep(
-        y + (width / 2.0) + (u_line_blur * pixel(1.0, iResolution.xy) * blur),
-        y,
-        st.y
-    );
-
-    float line_end = smoothstep(
-        y,
-        y - (width / 2.0) - (u_line_blur * pixel(1.0, iResolution.xy) * blur),
-        st.y
-    );
-
-    return clamp(
-        (line_start - line_end) * (1.0 - smoothstep(0.0, 1.0, pow(perc, 0.3))),
-        0.0,
-        1.0
-    );
+    float line_start = smoothstep(y + (width / 2.0) + (u_line_blur * pixel(1.0, iResolution.xy) * blur), y, st.y);
+    float line_end = smoothstep(y, y - (width / 2.0) - (u_line_blur * pixel(1.0, iResolution.xy) * blur), st.y);
+    return clamp((line_start - line_end) * (1.0 - smoothstep(0.0, 1.0, pow(perc, 0.3))), 0.0, 1.0);
 }
 
 void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     vec2 uv = fragCoord / iResolution.xy;
-
     float line_strength = 1.0;
     for (int i = 0; i < u_line_count; i++) {
         float p = float(i) / float(u_line_count);
-        line_strength *= (1.0 - lineFn(
-            uv,
-            u_line_width * pixel(1.0, iResolution.xy) * (1.0 - p),
-            p,
-            (PI * 1.0) * p,
-            uMouse,
-            iTime,
-            uAmplitude,
-            uDistance
-        ));
+        line_strength *= (1.0 - lineFn(uv, u_line_width * pixel(1.0, iResolution.xy) * (1.0 - p), p, (PI * 1.0) * p, uMouse, iTime, uAmplitude, uDistance));
     }
-
     float colorVal = 1.0 - line_strength;
     fragColor = vec4(uColor * colorVal, colorVal);
 }
@@ -130,7 +92,7 @@ void main() {
 `;
 
 const Threads: React.FC<ThreadsProps> = ({
-  color = [1, 1, 1],
+  color = [0, 0, 0],
   amplitude = 1,
   distance = 0,
   enableMouseInteraction = false,
@@ -144,16 +106,16 @@ const Threads: React.FC<ThreadsProps> = ({
     if (!containerRef.current) return;
     const container = containerRef.current;
 
-    // OPTIMIZATION: Limit DPR to max 1.5 to prevent lag on high-res screens (Retina/Mobile)
     const renderer = new Renderer({ 
         alpha: true,
-        dpr: Math.min(window.devicePixelRatio, 1.5) 
+        // Reduced DPR to 1 for maximum performance
+        dpr: 1, 
+        preserveDrawingBuffer: false,
+        powerPreference: "high-performance"
     });
     
     const gl = renderer.gl;
     gl.clearColor(0, 0, 0, 0);
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     container.appendChild(gl.canvas);
 
     const geometry = new Triangle(gl);
@@ -162,14 +124,13 @@ const Threads: React.FC<ThreadsProps> = ({
       fragment: fragmentShader,
       uniforms: {
         iTime: { value: 0 },
-        iResolution: {
-          value: new Color(gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height)
-        },
+        iResolution: { value: new Color(gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height) },
         uColor: { value: new Color(...color) },
         uAmplitude: { value: amplitude },
         uDistance: { value: distance },
         uMouse: { value: new Float32Array([0.5, 0.5]) }
-      }
+      },
+      transparent: true
     });
 
     const mesh = new Mesh(gl, { geometry, program });
@@ -182,8 +143,15 @@ const Threads: React.FC<ThreadsProps> = ({
       program.uniforms.iResolution.value.g = clientHeight;
       program.uniforms.iResolution.value.b = clientWidth / clientHeight;
     }
-    window.addEventListener('resize', resize);
+    
     resize();
+    
+    let resizeTimeout: any;
+    const handleResize = () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(resize, 200); // Debounce resize
+    };
+    window.addEventListener('resize', handleResize);
 
     let currentMouse = [0.5, 0.5];
     let targetMouse = [0.5, 0.5];
@@ -194,58 +162,32 @@ const Threads: React.FC<ThreadsProps> = ({
       const y = 1.0 - (e.clientY - rect.top) / rect.height;
       targetMouse = [x, y];
     }
-    function handleMouseLeave() {
-      targetMouse = [0.5, 0.5];
-    }
+    
     if (enableMouseInteraction) {
       container.addEventListener('mousemove', handleMouseMove);
-      container.addEventListener('mouseleave', handleMouseLeave);
     }
 
-    // OPTIMIZATION: Intersection Observer to stop rendering when not in view
-    let isVisible = true;
-    const observer = new IntersectionObserver(
-        ([entry]) => {
-            isVisible = entry.isIntersecting;
-        },
-        { threshold: 0 }
-    );
-    observer.observe(container);
-
-    function update(t: number) {
-      // Only render if visible to save GPU/CPU for scrolling
-      if (isVisible) {
-          if (enableMouseInteraction) {
-            const smoothing = 0.05;
-            currentMouse[0] += smoothing * (targetMouse[0] - currentMouse[0]);
-            currentMouse[1] += smoothing * (targetMouse[1] - currentMouse[1]);
-            program.uniforms.uMouse.value[0] = currentMouse[0];
-            program.uniforms.uMouse.value[1] = currentMouse[1];
-          } else {
-            program.uniforms.uMouse.value[0] = 0.5;
-            program.uniforms.uMouse.value[1] = 0.5;
-          }
-          program.uniforms.iTime.value = t * 0.001;
-    
-          renderer.render({ scene: mesh });
+    let time = 0;
+    function update() {
+      time += 16;
+      if (enableMouseInteraction) {
+        currentMouse[0] += 0.05 * (targetMouse[0] - currentMouse[0]);
+        currentMouse[1] += 0.05 * (targetMouse[1] - currentMouse[1]);
+        program.uniforms.uMouse.value[0] = currentMouse[0];
+        program.uniforms.uMouse.value[1] = currentMouse[1];
       }
-      
+      program.uniforms.iTime.value = time * 0.001;
+      renderer.render({ scene: mesh });
       animationFrameId.current = requestAnimationFrame(update);
     }
     animationFrameId.current = requestAnimationFrame(update);
 
     return () => {
+      clearTimeout(resizeTimeout); // FIX: Clear timeout to prevent memory leak
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
-      window.removeEventListener('resize', resize);
-      observer.disconnect();
-
-      if (enableMouseInteraction) {
-        container.removeEventListener('mousemove', handleMouseMove);
-        container.removeEventListener('mouseleave', handleMouseLeave);
-      }
+      window.removeEventListener('resize', handleResize);
       if (container && container.contains(gl.canvas)) container.removeChild(gl.canvas);
-      
-      // Cleanup WebGL context to free memory
+      // Force context loss to clean up GPU memory
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
   }, [color, amplitude, distance, enableMouseInteraction]);
@@ -253,4 +195,4 @@ const Threads: React.FC<ThreadsProps> = ({
   return <div ref={containerRef} className={`threads-container ${className || ''}`} {...rest} />;
 };
 
-export default Threads;
+export default React.memo(Threads);

@@ -39,8 +39,8 @@ export interface Prompt {
   tags?: string[];
   author: string;
   creator_id?: string;
-  category: string; // Keep for backward compatibility display
-  categories: string[]; // New multi-category support
+  category: string; 
+  categories: string[]; 
   created_at?: string;
   likes: number;
   is_liked?: boolean;
@@ -48,6 +48,7 @@ export interface Prompt {
   is_bundle?: boolean;
   monetization_url?: string;
   instagram_handle?: string;
+  prompt_type: 'standard' | 'product'; // Added
 }
 
 export interface PromptContent {
@@ -113,45 +114,24 @@ export interface EarningEntry {
   prompt_title: string;
 }
 
-// Rate Me Types
-export interface RateMeParameters {
-  // Core Metrics
-  face: number;
-  outfit: number;
-  eyes: number;
-  jawline: number;
-  skin: number;
-  overall: number;
-  
-  // Detailed Metrics (New)
-  symmetry?: number;
-  canthal_tilt?: number;
-  cheekbones?: number;
-  nose?: number;
-
-  roast?: string;
-  toast?: string;
-}
-
-export interface RateMeEntry {
-  id: string;
-  user_id: string;
-  image_url: string;
-  gender: 'Men' | 'Women';
-  parameters: RateMeParameters;
-  ai_base_score: number;
-  vote_offset: number;
-  final_score: number;
-  is_published: boolean;
-  player_name?: string; // Custom name for leaderboard
-  social_links: {
-    instagram?: string;
-    twitter?: string;
-    youtube?: string;
+// Image to JSON Types
+export interface ImageAnalysisResult {
+  metadata: {
+    confidence_score: string;
+    image_type: string;
+    primary_purpose: string;
   };
-  created_at: string;
-  user_profile?: {
-    full_name: string;
-    avatar_url: string;
+  composition: any;
+  color_profile: any;
+  lighting: any;
+  technical_specs: any;
+  artistic_elements: any;
+  subject_analysis: any;
+  background: any;
+  generation_parameters: {
+    prompts: string[];
+    keywords: string[];
+    technical_settings: string;
+    post_processing: string;
   };
 }

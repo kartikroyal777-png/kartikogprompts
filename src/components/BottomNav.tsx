@@ -1,26 +1,25 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, PlusSquare, BookOpen, Star, LayoutGrid, Coins, Flame } from 'lucide-react';
+import { Home, PlusSquare, Box, LayoutGrid, Coins, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 
 const BottomNav = () => {
   const location = useLocation();
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
 
   const navItems = [
     { icon: Home, label: 'Home', path: '/' },
     { icon: LayoutGrid, label: 'Prompts', path: '/prompts' },
-    // Show Upload only if creator, else show Buy Credits or become creator
+    { icon: Box, label: 'Products', path: '/product-prompts' },
+    { icon: Sparkles, label: 'AI JSON', path: '/image-to-json' },
     profile?.creator_badge 
       ? { icon: PlusSquare, label: 'Upload', path: '/upload' }
       : { icon: Coins, label: 'Credits', path: '/buy-credits' },
-    { icon: BookOpen, label: 'Ebook', path: '/ebook' },
-    { icon: Star, label: 'Rate Me', path: '/rate-me', badge: true }, // Replaced Profile
   ];
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-gray-200 dark:border-slate-800 pb-safe z-50 rounded-t-2xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-black/95 backdrop-blur-lg border-t border-gray-200 dark:border-gray-800 pb-safe z-50">
       <div className="flex justify-around items-center h-16 px-2">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
@@ -29,18 +28,11 @@ const BottomNav = () => {
               key={item.path}
               to={item.path}
               className={cn(
-                "relative flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors duration-200 min-w-[60px]",
-                isActive ? "text-sky-500 dark:text-sky-400" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400"
+                "relative flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors duration-200",
+                isActive ? "text-black dark:text-white" : "text-gray-400 dark:text-gray-600"
               )}
             >
-              <div className="relative">
-                <item.icon className={cn("w-6 h-6 transition-transform", isActive && "scale-110 stroke-[2.5px]")} />
-                {item.badge && (
-                  <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded-full flex items-center shadow-sm animate-pulse">
-                    <Flame className="w-2 h-2 fill-current" />
-                  </div>
-                )}
-              </div>
+              <item.icon className={cn("w-6 h-6 transition-transform", isActive && "scale-110")} />
               <span className={cn("text-[10px] font-medium", isActive && "font-bold")}>{item.label}</span>
             </Link>
           );

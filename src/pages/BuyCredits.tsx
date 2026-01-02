@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Coins, Check, Zap, ShieldCheck, Gift, Loader2, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Coins, Check, Zap, ShieldCheck, Gift, Loader2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabase';
@@ -11,7 +11,6 @@ const PADDLE_CLIENT_TOKEN = 'test_508e43bdb0bcfc3e72b7a8d97b4';
 
 // Updated Price IDs provided by user
 const PRICE_IDS: Record<string, string> = {
-  // TODO: Update this ID with the new $5 Price ID from your Paddle Dashboard
   starter: 'pri_01kcedde45xa69gnet6xz0eds9', 
   pro: 'pri_01kcedfkhj060kde35cfnkzn14',
   ultra: 'pri_01kcedjfvdppt5hfj3jss65dh4'
@@ -54,7 +53,7 @@ export default function BuyCredits() {
           checkout: {
             settings: {
               displayMode: 'overlay',
-              theme: 'light',
+              theme: theme === 'dark' ? 'dark' : 'light',
               locale: 'en'
             }
           }
@@ -69,10 +68,9 @@ export default function BuyCredits() {
     };
 
     initPaddle();
-  }, []);
+  }, [theme]);
 
   const handlePurchaseClick = (plan: typeof PLANS[0]) => {
-    // 1. Prevent "Refused to connect" error by blocking iframe attempts
     if (isIframe) {
       alert("⚠️ SECURITY RESTRICTION ⚠️\n\nPayment gateways cannot run inside this preview window.\n\nPlease click the 'Open in New Tab' button (top-right corner) to complete your purchase safely.");
       return;
@@ -90,9 +88,8 @@ export default function BuyCredits() {
 
     const priceId = PRICE_IDS[plan.id];
     
-    // Validation: Ensure Price ID is valid
     if (!priceId || !priceId.startsWith('pri_')) {
-      alert(`Configuration Error: Invalid Price ID for ${plan.label}. It must start with 'pri_'. Please check the code.`);
+      alert(`Configuration Error: Invalid Price ID for ${plan.label}.`);
       return;
     }
 
@@ -107,25 +104,23 @@ export default function BuyCredits() {
           credits: plan.credits.toString()
         },
         settings: {
-          successUrl: window.location.href, // Optional: helps with some redirects
+          successUrl: window.location.href,
           displayMode: 'overlay',
         }
       });
     } catch (err: any) {
       console.error("Paddle Checkout Error:", err);
-      alert("Failed to open checkout. Please ensure you have allowed this domain in your Paddle Dashboard.");
+      alert("Failed to open checkout.");
     }
   };
 
   const handlePaddleSuccess = async (data: any) => {
-    // Extract credits from customData if available
     let creditsToAdd = 0;
     
     if (data.custom_data && data.custom_data.credits) {
       creditsToAdd = parseInt(data.custom_data.credits);
     }
 
-    // Fallback: Match based on price ID
     if (creditsToAdd === 0 && data.items) {
         for (const item of data.items) {
             const planId = Object.keys(PRICE_IDS).find(key => PRICE_IDS[key] === item.price_id);
@@ -178,24 +173,23 @@ export default function BuyCredits() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-28 pb-24 px-4 transition-colors duration-300 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-black pt-28 pb-24 px-4 transition-colors duration-300 relative overflow-hidden">
       
-      {/* Aesthetic Grid Background */}
+      {/* Monochrome Grid Background */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:linear-gradient(to_bottom,#000_60%,transparent_100%)] pointer-events-none z-0"></div>
 
       <div className="relative z-10 max-w-5xl mx-auto">
         
-        {/* Debug/Help Banner for "Refused to Connect" */}
         {isIframe && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-8 flex items-start gap-3 animate-pulse">
-            <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-500 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-red-800 dark:text-red-200">
+          <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-8 flex items-start gap-3">
+            <AlertTriangle className="w-6 h-6 text-black dark:text-white flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-gray-800 dark:text-gray-200">
               <p className="font-bold text-lg mb-1">Action Required: Open in New Tab</p>
               <p className="mb-2">
-                Payments <strong>will not work</strong> in this preview window due to browser security (you will see a "refused to connect" error).
+                Payments <strong>will not work</strong> in this preview window due to browser security.
               </p>
               <p className="font-bold">
-                👉 Please click the "Open in New Tab" button (top-right of the preview pane) to test payments.
+                👉 Please click the "Open in New Tab" button to complete your purchase safely.
               </p>
             </div>
           </div>
@@ -206,9 +200,9 @@ export default function BuyCredits() {
           <p className="text-lg text-slate-600 dark:text-slate-400">Unlock premium prompts and support creators directly.</p>
           
           {wallet && (
-            <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 rounded-full border border-gray-200 dark:border-slate-800 shadow-sm">
+            <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-900 rounded-full border border-gray-200 dark:border-gray-800 shadow-sm">
               <span className="text-slate-500 dark:text-slate-400 text-sm">Current Balance:</span>
-              <span className="font-bold text-sky-500 flex items-center gap-1">
+              <span className="font-bold text-black dark:text-white flex items-center gap-1">
                 <Coins className="w-4 h-4 fill-current" />
                 {wallet.balance_credits}
               </span>
@@ -220,14 +214,14 @@ export default function BuyCredits() {
           {PLANS.map((plan) => (
             <div 
               key={plan.id}
-              className={`relative bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm rounded-3xl p-8 border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+              className={`relative bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-3xl p-8 border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
                 plan.popular 
-                  ? 'border-sky-500 ring-4 ring-sky-500/10 shadow-lg shadow-sky-500/10' 
-                  : 'border-gray-200 dark:border-slate-800 hover:border-sky-300 dark:hover:border-sky-700'
+                  ? 'border-black dark:border-white ring-2 ring-black/5 dark:ring-white/5 shadow-lg' 
+                  : 'border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600'
               }`}
             >
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-sky-500 to-blue-600 text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-lg">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-black dark:bg-white text-white dark:text-black text-xs font-bold uppercase tracking-wider rounded-full shadow-lg">
                   Most Popular
                 </div>
               )}
@@ -238,7 +232,7 @@ export default function BuyCredits() {
                   <span className="text-4xl font-bold text-slate-900 dark:text-white">${plan.price}</span>
                   <span className="text-slate-400 text-lg">USD</span>
                 </div>
-                <div className="mt-4 flex items-center justify-center gap-2 text-sky-500 font-bold text-xl">
+                <div className="mt-4 flex items-center justify-center gap-2 text-black dark:text-white font-bold text-xl">
                   <Coins className="w-6 h-6 fill-current" />
                   {plan.credits} Credits
                 </div>
@@ -246,15 +240,15 @@ export default function BuyCredits() {
 
               <ul className="space-y-4 mb-8">
                 <li className="flex items-center gap-3 text-slate-600 dark:text-slate-300 text-sm">
-                  <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  <Check className="w-5 h-5 text-black dark:text-white flex-shrink-0" />
                   <span>{plan.desc}</span>
                 </li>
                 <li className="flex items-center gap-3 text-slate-600 dark:text-slate-300 text-sm">
-                  <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  <Check className="w-5 h-5 text-black dark:text-white flex-shrink-0" />
                   <span>Support Creators Directly</span>
                 </li>
                 <li className="flex items-center gap-3 text-slate-600 dark:text-slate-300 text-sm">
-                  <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  <Check className="w-5 h-5 text-black dark:text-white flex-shrink-0" />
                   <span>Never Expires</span>
                 </li>
               </ul>
@@ -264,8 +258,8 @@ export default function BuyCredits() {
                 disabled={loadingPaddle}
                 className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                   plan.popular
-                    ? 'bg-sky-500 hover:bg-sky-600 text-white shadow-lg shadow-sky-500/25'
-                    : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white'
+                    ? 'bg-black hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-200 text-white dark:text-black shadow-lg'
+                    : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-black dark:text-white'
                 }`}
               >
                 {loadingPaddle ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
@@ -276,9 +270,9 @@ export default function BuyCredits() {
         </div>
 
         {/* Coupon Section */}
-        <div className="max-w-md mx-auto bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-200 dark:border-slate-800 shadow-sm">
+        <div className="max-w-md mx-auto bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
+            <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-black dark:text-white">
               <Gift className="w-5 h-5" />
             </div>
             <div>
@@ -293,12 +287,12 @@ export default function BuyCredits() {
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value)}
               placeholder="Enter code..."
-              className="flex-1 px-4 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-purple-500 outline-none"
+              className="flex-1 px-4 py-2 bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-black dark:focus:ring-white outline-none"
             />
             <button
               type="submit"
               disabled={redeeming || !couponCode.trim()}
-              className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-2 bg-black dark:bg-white hover:opacity-80 text-white dark:text-black font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {redeeming ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Redeem'}
             </button>

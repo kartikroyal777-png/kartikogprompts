@@ -7,8 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // OVERRIDE SLATE (Navy) with NEUTRAL/ZINC (True Black/Gray)
-        // Using #050505 for background as requested
+        // Monochrome Palette Override
         slate: {
           50: '#fafafa',
           100: '#f5f5f5',
@@ -19,23 +18,26 @@ export default {
           600: '#525252',
           700: '#404040',
           800: '#262626',
-          900: '#121212', // Cards: Slightly lighter than bg for contrast
-          950: '#050505', // Background: The requested specific black
+          900: '#171717', 
+          950: '#050505', // Deep Black
         },
-        // Enforce Gray as Neutral too
-        gray: {
+        // Re-map Sky/Blue to Grayscale for quick theme switch
+        sky: {
           50: '#fafafa',
-          100: '#f5f5f5',
-          200: '#e5e5e5',
-          300: '#d4d4d4',
-          400: '#a3a3a3',
-          500: '#737373',
-          600: '#525252',
-          700: '#404040',
-          800: '#262626',
-          900: '#121212', // Cards
-          950: '#050505', // Background
+          100: '#f4f4f5',
+          200: '#e4e4e7',
+          300: '#d4d4d8',
+          400: '#a1a1aa',
+          500: '#71717a', // Neutral Gray
+          600: '#52525b',
+          700: '#3f3f46',
+          800: '#27272a',
+          900: '#18181b',
+          950: '#09090b',
         }
+      },
+      animation: {
+        'spin-slow': 'spin 3s linear infinite',
       }
     }
   },

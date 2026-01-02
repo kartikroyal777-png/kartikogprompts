@@ -6,6 +6,7 @@ import { Instagram, Globe, Youtube, CheckCircle, Lock, Unlock, Loader2, Sparkles
 import PromptCard from '../components/PromptCard';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from '../components/AuthModal';
+import { getImageUrl } from '../lib/utils';
 
 interface ExtendedCreator extends ICreatorProfile {
   display_name: string;
@@ -82,10 +83,12 @@ export default function CreatorProfile() {
       const formattedPrompts: Prompt[] = (promptsData || []).map((p: any) => {
          const imagesList = (p.images || [])
             .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
-            .map((img: any) => {
-                if (img.storage_path.startsWith('http')) return img.storage_path;
-                return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
-            });
+            .map((img: any) => getImageUrl(img.storage_path));
+
+        let imageUrl = imagesList[0];
+        if (!imageUrl) {
+           imageUrl = getImageUrl(p.image);
+        }
 
         return {
           id: p.id,
@@ -97,8 +100,8 @@ export default function CreatorProfile() {
           category: p.category,
           categories: p.categories || [p.category],
           likes: p.likes_count || 0,
-          image: imagesList[0] || p.image || 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800?text=No+Image',
-          images: imagesList,
+          image: imageUrl,
+          images: imagesList.length > 0 ? imagesList : [imageUrl],
           monetization_url: p.monetization_url,
           is_paid: p.is_paid,
           price_credits: p.price_credits,

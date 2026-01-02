@@ -8,6 +8,7 @@ import PayoutModal from '../components/PayoutModal';
 import UserListModal from '../components/UserListModal';
 import { Subscriber, EarningEntry, Prompt } from '../types';
 import PromptCard from '../components/PromptCard';
+import { getImageUrl } from '../lib/utils';
 
 const Profile = () => {
   const { user, profile, wallet, refreshWallet, refreshProfile, signOut } = useAuth();
@@ -37,7 +38,6 @@ const Profile = () => {
   useEffect(() => {
     if (profile) {
       setDisplayName(isAdmin ? 'Admin' : (profile.full_name || ''));
-      // Fetch stats if creator, admin, OR has earnings
       if (profile.role === 'creator' || isAdmin || (wallet?.withdrawable_credits ?? 0) > 0) {
         fetchCreatorStats();
       }
@@ -51,26 +51,19 @@ const Profile = () => {
     try {
       const { data, error } = await supabase
         .from('prompts')
-        .select(`
-          *,
-          images:prompt_images(storage_path, order_index)
-        `)
+        .select(`*, images:prompt_images(storage_path, order_index)`)
         .eq('creator_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       const formattedPrompts: Prompt[] = (data || []).map((p: any) => {
-         const imagesList = (p.images || [])
-            .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
-            .map((img: any) => {
-                if (img.storage_path.startsWith('http')) return img.storage_path;
-                return supabase.storage.from('prompt-images').getPublicUrl(img.storage_path).data.publicUrl;
-            });
+         const imagesList = (p.images || []).map((img: any) => getImageUrl(img.storage_path));
 
-        let imageUrl = 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image';
-        if (imagesList.length > 0) imageUrl = imagesList[0];
-        else if (p.image) imageUrl = p.image;
+        let imageUrl = imagesList[0];
+        if (!imageUrl) {
+           imageUrl = getImageUrl(p.image);
+        }
 
         return {
           id: p.id,
@@ -82,17 +75,16 @@ const Profile = () => {
           category: p.category,
           likes: p.likes_count || 0,
           image: imageUrl,
-          images: imagesList,
+          images: imagesList.length > 0 ? imagesList : [imageUrl],
           monetization_url: p.monetization_url,
           is_paid: p.is_paid,
           price_credits: p.price_credits,
-          is_bundle: p.is_bundle
+          is_bundle: p.is_bundle,
+          prompt_type: p.prompt_type
         };
       });
 
       setMyPrompts(formattedPrompts);
-      
-      // Calculate total likes from prompts if not fetched separately
       const likes = formattedPrompts.reduce((sum, p) => sum + (p.likes || 0), 0);
       setTotalLikes(likes);
 
@@ -106,11 +98,9 @@ const Profile = () => {
   const fetchCreatorStats = async () => {
     if (!user) return;
     try {
-      // Fetch Subscribers
       const { data: subs, error: subError } = await supabase.rpc('get_subscribers', { p_creator_id: user.id });
       if (!subError) setSubscribers(subs || []);
 
-      // Fetch Earnings
       const { data: earns, error: earnError } = await supabase.rpc('get_earnings_history', { p_creator_id: user.id });
       if (!earnError) setEarnings(earns || []);
 
@@ -123,7 +113,6 @@ const Profile = () => {
 
   const totalCredits = wallet?.balance_credits ?? 0;
   const earnedCredits = wallet?.withdrawable_credits ?? 0;
-  const purchasedCredits = Math.max(0, totalCredits - earnedCredits);
 
   const handleSignOut = async () => {
     try {
@@ -141,14 +130,10 @@ const Profile = () => {
 
     try {
       setConverting(true);
-      const { error } = await supabase.rpc('convert_credits_to_usd', {
-        credits_amount: 15
-      });
-
+      const { error } = await supabase.rpc('convert_credits_to_usd', { credits_amount: 15 });
       if (error) throw error;
-
       await refreshWallet();
-      await refreshProfile(); // Refresh USD balance
+      await refreshProfile();
       toast.success('Successfully converted 15 credits to $1 USD');
     } catch (error) {
       console.error('Error converting credits:', error);
@@ -180,16 +165,15 @@ const Profile = () => {
     }
   };
 
-  // Condition to show creator tools: Creator Role OR Admin OR Has Earnings
   const showCreatorTools = profile.role === 'creator' || isAdmin || earnedCredits > 0;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white pt-24 pb-12 transition-colors duration-300">
+    <div className="min-h-screen bg-white dark:bg-black text-slate-900 dark:text-white pt-24 pb-12 transition-colors duration-300">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Profile Header */}
-        <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl p-8 mb-12 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="bg-slate-50 dark:bg-gray-900 rounded-3xl p-8 mb-12 border border-slate-200 dark:border-gray-800 shadow-sm">
           <div className="flex flex-col md:flex-row items-center gap-10">
-            <div className="w-28 h-28 rounded-full bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center text-4xl font-bold text-white shadow-lg shadow-sky-500/20">
+            <div className="w-28 h-28 rounded-full bg-black dark:bg-white flex items-center justify-center text-4xl font-bold text-white dark:text-black shadow-lg">
               {profile.avatar_url ? (
                 <img src={profile.avatar_url} alt={profile.full_name || ''} className="w-full h-full rounded-full object-cover" />
               ) : (
@@ -201,17 +185,17 @@ const Profile = () => {
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1 flex items-center justify-center md:justify-start gap-2">
                   {isAdmin ? 'Admin' : (profile.full_name || 'User')}
-                  {profile.creator_badge && <Sparkles className="w-5 h-5 text-purple-500 fill-purple-500/20" />}
+                  {profile.creator_badge && <Sparkles className="w-5 h-5 text-black dark:text-white" />}
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 font-medium">{user.email}</p>
               </div>
               
               {/* Wallet Stats */}
               <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                <div className="bg-white dark:bg-slate-800 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div className="bg-white dark:bg-black px-5 py-3 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm">
                   <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Balance</div>
                   <div className="flex items-center gap-2">
-                    <Wallet className="w-5 h-5 text-purple-500" />
+                    <Wallet className="w-5 h-5 text-black dark:text-white" />
                     <span className="font-bold text-lg text-slate-900 dark:text-white">{totalCredits}</span>
                   </div>
                 </div>
@@ -220,38 +204,38 @@ const Profile = () => {
                   <>
                     <button 
                       onClick={() => setShowEarningsModal(true)}
-                      className="bg-white dark:bg-slate-800 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-green-300 dark:hover:border-green-700 transition-colors group text-left"
+                      className="bg-white dark:bg-black px-5 py-3 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm hover:border-black dark:hover:border-white transition-colors group text-left"
                     >
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-green-600 dark:group-hover:text-green-400">Earned Credits</div>
+                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-black dark:group-hover:text-white">Earned Credits</div>
                       <div className="flex items-center gap-2">
-                        <CreditCard className="w-5 h-5 text-green-500" />
+                        <CreditCard className="w-5 h-5 text-black dark:text-white" />
                         <span className="font-bold text-lg text-slate-900 dark:text-white">{earnedCredits}</span>
                       </div>
                     </button>
 
                     <button 
                       onClick={() => setShowSubscribersModal(true)}
-                      className="bg-white dark:bg-slate-800 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:border-sky-300 dark:hover:border-sky-700 transition-colors group text-left"
+                      className="bg-white dark:bg-black px-5 py-3 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm hover:border-black dark:hover:border-white transition-colors group text-left"
                     >
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-sky-600 dark:group-hover:text-sky-400">Subscribers</div>
+                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-black dark:group-hover:text-white">Subscribers</div>
                       <div className="flex items-center gap-2">
-                        <Users className="w-5 h-5 text-sky-500" />
+                        <Users className="w-5 h-5 text-black dark:text-white" />
                         <span className="font-bold text-lg text-slate-900 dark:text-white">{subscribers.length}</span>
                       </div>
                     </button>
 
-                    <div className="bg-white dark:bg-slate-800 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <div className="bg-white dark:bg-black px-5 py-3 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm">
                       <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Likes</div>
                       <div className="flex items-center gap-2">
-                        <Heart className="w-5 h-5 text-red-500" />
+                        <Heart className="w-5 h-5 text-black dark:text-white" />
                         <span className="font-bold text-lg text-slate-900 dark:text-white">{totalLikes}</span>
                       </div>
                     </div>
 
-                    <div className="bg-white dark:bg-slate-800 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <div className="bg-white dark:bg-black px-5 py-3 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm">
                       <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">USD Wallet</div>
                       <div className="flex items-center gap-2">
-                        <DollarSign className="w-5 h-5 text-green-600" />
+                        <DollarSign className="w-5 h-5 text-black dark:text-white" />
                         <span className="font-bold text-lg text-slate-900 dark:text-white">${profile.usd_balance || 0}</span>
                       </div>
                     </div>
@@ -265,7 +249,7 @@ const Profile = () => {
                   <button
                     onClick={handleConvertCredits}
                     disabled={earnedCredits < 15 || converting}
-                    className="bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-gray-200 text-white dark:text-slate-900 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-slate-900/10 dark:shadow-white/10 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-black dark:bg-white hover:opacity-80 text-white dark:text-black px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <RefreshCw className={`w-4 h-4 ${converting ? 'animate-spin' : ''}`} />
                     Convert 15 Credits to $1
@@ -273,7 +257,7 @@ const Profile = () => {
                   
                   <button
                     onClick={() => setIsPayoutModalOpen(true)}
-                    className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-green-600/20 flex items-center gap-2"
+                    className="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-black dark:text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2"
                   >
                     <DollarSign className="w-4 h-4" />
                     Withdraw Funds
@@ -283,10 +267,10 @@ const Profile = () => {
             </div>
 
             <div className="flex flex-col gap-3 min-w-[160px]">
-              <Link to="/buy-credits" className="bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-sky-500/20 text-center">
+              <Link to="/buy-credits" className="bg-black dark:bg-white hover:opacity-80 text-white dark:text-black px-6 py-3 rounded-xl font-bold transition-all shadow-lg text-center">
                 Buy Credits
               </Link>
-              <button onClick={handleSignOut} className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2">
+              <button onClick={handleSignOut} className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-gray-700 px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2">
                 <LogOut className="w-4 h-4" />
                 Sign Out
               </button>
@@ -295,11 +279,11 @@ const Profile = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 mb-8">
+        <div className="flex border-b border-slate-200 dark:border-gray-800 mb-8">
           <button
             onClick={() => setActiveTab('prompts')}
             className={`px-8 py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors ${
-              activeTab === 'prompts' ? 'border-sky-500 text-sky-600 dark:text-sky-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+              activeTab === 'prompts' ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             <ImageIcon className="w-4 h-4" />
@@ -308,7 +292,7 @@ const Profile = () => {
           <button
             onClick={() => setActiveTab('settings')}
             className={`px-8 py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors ${
-              activeTab === 'settings' ? 'border-sky-500 text-sky-600 dark:text-sky-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+              activeTab === 'settings' ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
             <Settings className="w-4 h-4" />
@@ -329,10 +313,10 @@ const Profile = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-center text-slate-400 py-16 bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800">
+                <div className="text-center text-slate-400 py-16 bg-slate-50 dark:bg-gray-900 rounded-3xl border border-slate-100 dark:border-gray-800">
                   <ImageIcon className="w-16 h-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
                   <p className="text-lg font-medium text-slate-600 dark:text-slate-400">You haven't uploaded any prompts yet.</p>
-                  <Link to="/upload" className="text-sky-500 hover:text-sky-600 font-bold mt-2 inline-block">
+                  <Link to="/upload" className="text-black dark:text-white hover:underline font-bold mt-2 inline-block">
                     Upload your first prompt
                   </Link>
                 </div>
@@ -341,12 +325,12 @@ const Profile = () => {
           )}
           
           {activeTab === 'settings' && (
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm max-w-2xl">
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 border border-slate-200 dark:border-gray-800 shadow-sm max-w-2xl">
               <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Account Settings</h3>
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-bold text-slate-500 dark:text-slate-400 mb-2">Email Address</label>
-                  <input type="text" value={user.email} disabled className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-500 dark:text-slate-400 cursor-not-allowed font-medium" />
+                  <input type="text" value={user.email} disabled className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-4 py-3 text-slate-500 dark:text-slate-400 cursor-not-allowed font-medium" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Display Name</label>
@@ -355,14 +339,14 @@ const Profile = () => {
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     disabled={isAdmin}
-                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent font-medium disabled:bg-slate-50 disabled:text-slate-500" 
+                    className="w-full bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent font-medium disabled:bg-slate-50 disabled:text-slate-500" 
                   />
                   {isAdmin && <p className="text-xs text-red-500 mt-1">Admin name cannot be changed.</p>}
                 </div>
                 <button 
                   onClick={handleSaveProfile}
                   disabled={savingProfile || isAdmin}
-                  className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-3 rounded-xl font-bold hover:bg-slate-800 dark:hover:bg-gray-200 transition-all disabled:opacity-50"
+                  className="bg-black dark:bg-white text-white dark:text-black px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-all disabled:opacity-50"
                 >
                   {savingProfile ? 'Saving...' : 'Save Changes'}
                 </button>

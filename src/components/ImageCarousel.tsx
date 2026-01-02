@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 interface ImageCarouselProps {
@@ -18,6 +18,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
 }) => {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [imgError, setImgError] = useState<Record<number, boolean>>({});
 
   const scrollPrev = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -42,32 +43,51 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
     };
   }, [emblaApi, onSelect]);
 
-  if (!images || images.length === 0) return null;
+  const handleError = (index: number) => {
+    setImgError(prev => ({ ...prev, [index]: true }));
+  };
 
-  if (images.length === 1) {
+  const validImages = images && images.length > 0 ? images : [];
+  // Direct placeholder link
+  const placeholder = "https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image";
+
+  if (validImages.length === 0) {
     return (
-      <div className={cn("relative overflow-hidden w-full h-full", aspectRatio, className)}>
+      <div className={cn("relative overflow-hidden w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center", aspectRatio, className)}>
+        <div className="text-center text-gray-400">
+            <ImageOff className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <span className="text-xs font-medium">No Image</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (validImages.length === 1) {
+    return (
+      <div className={cn("relative overflow-hidden w-full h-full bg-gray-100 dark:bg-gray-800", aspectRatio, className)}>
         <img 
-          src={images[0]} 
+          src={imgError[0] ? placeholder : validImages[0]} 
           alt={alt}
           className="absolute inset-0 w-full h-full object-cover"
           loading="lazy"
+          onError={() => handleError(0)}
         />
       </div>
     );
   }
 
   return (
-    <div className={cn("relative group w-full h-full", aspectRatio, className)}>
+    <div className={cn("relative group w-full h-full bg-gray-100 dark:bg-gray-800", aspectRatio, className)}>
       <div className="overflow-hidden w-full h-full" ref={emblaRef}>
         <div className="flex w-full h-full">
-          {images.map((src, index) => (
+          {validImages.map((src, index) => (
             <div key={index} className="flex-[0_0_100%] min-w-0 relative h-full">
               <img 
-                src={src} 
+                src={imgError[index] ? placeholder : src} 
                 alt={`${alt} ${index + 1}`}
                 className="absolute inset-0 w-full h-full object-cover"
                 loading="lazy"
+                onError={() => handleError(index)}
               />
             </div>
           ))}
@@ -90,7 +110,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
 
       {/* Dots */}
       <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 z-10">
-        {images.map((_, index) => (
+        {validImages.map((_, index) => (
           <div
             key={index}
             className={cn(

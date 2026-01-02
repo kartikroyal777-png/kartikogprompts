@@ -1,12 +1,21 @@
 import React from 'react';
-import { Users, BookOpen, ShieldAlert, Mail, CheckCircle, Sparkles, Info } from 'lucide-react';
+import { Users, BookOpen, ShieldAlert, Mail, CheckCircle, Sparkles, Info, Shield, FileText } from 'lucide-react';
 
-const LegalLayout = ({ title, children }: { title: string, children: React.ReactNode }) => (
-  <div className="min-h-screen bg-white dark:bg-slate-950 py-12 px-4 pt-24 pb-12 transition-colors duration-300">
-    <div className="max-w-3xl mx-auto prose dark:prose-invert">
-      <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-8">{title}</h1>
-      <div className="text-slate-600 dark:text-slate-400 space-y-6">
-        {children}
+const LegalLayout = ({ title, icon: Icon, children }: { title: string, icon?: any, children: React.ReactNode }) => (
+  <div className="min-h-screen bg-white dark:bg-slate-950 py-12 px-4 pt-28 pb-12 transition-colors duration-300">
+    <div className="max-w-3xl mx-auto">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 md:p-12 border border-gray-200 dark:border-gray-800 shadow-xl">
+        <div className="flex items-center gap-4 mb-8 pb-8 border-b border-gray-100 dark:border-gray-800">
+          {Icon && (
+            <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-xl text-black dark:text-white">
+              <Icon className="w-8 h-8" />
+            </div>
+          )}
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white">{title}</h1>
+        </div>
+        <div className="prose dark:prose-invert max-w-none text-slate-600 dark:text-slate-400 space-y-6">
+          {children}
+        </div>
       </div>
     </div>
   </div>
@@ -171,26 +180,48 @@ export const About = () => (
 );
 
 export const Privacy = () => (
-  <LegalLayout title="Privacy Policy">
+  <LegalLayout title="Privacy Policy" icon={Shield}>
     <p className="text-sm text-slate-400">Last updated: December 5, 2025</p>
-    <h3>1. What we collect</h3>
-    <p>Uploaders: Prompt text, the URL you paste for monetization, creator name, and Instagram handle (if provided). Standard server logs like IP & browser info are also collected to prevent spam.</p>
-    <p>Visitors: Nothing. We use no cookies, no trackers, and no analytics. Your browsing is your business.</p>
-    <h3>2. Why we collect it</h3>
-    <p>To keep the site running, prevent spam, and display your creator credit on your prompts.</p>
-    <h3>3. Third parties</h3>
-    <p>Your pay-link (e.g., Adsterra) is embedded in your prompt's "Get Prompt" button. Their privacy policy applies after a visitor clicks that link.</p>
+    
+    <div className="space-y-6">
+      <section>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">1. What we collect</h3>
+        <p>Uploaders: Prompt text, the URL you paste for monetization, creator name, and Instagram handle (if provided). Standard server logs like IP & browser info are also collected to prevent spam.</p>
+        <p className="mt-2">Visitors: Nothing. We use no cookies, no trackers, and no analytics. Your browsing is your business.</p>
+      </section>
+
+      <section>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">2. Why we collect it</h3>
+        <p>To keep the site running, prevent spam, and display your creator credit on your prompts.</p>
+      </section>
+
+      <section>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">3. Third parties</h3>
+        <p>Your pay-link (e.g., Adsterra) is embedded in your prompt's "Get Prompt" button. Their privacy policy applies after a visitor clicks that link.</p>
+      </section>
+    </div>
   </LegalLayout>
 );
 
 export const Terms = () => (
-  <LegalLayout title="Terms of Service">
+  <LegalLayout title="Terms of Service" icon={FileText}>
     <p className="text-sm text-slate-400">Last updated: December 5, 2025</p>
-    <h3>1. Accepting these terms</h3>
-    <p>By viewing or uploading anything on OG Prompts, you agree to these terms.</p>
-    <h3>2. Allowed content</h3>
-    <p>Only text prompts and legitimate pay-links (no malware, no phishing, no adult content where prohibited).</p>
-    <h3>3. Monetization</h3>
-    <p>You may insert one direct-link per prompt. We place zero fees; earnings are between you and your ad network.</p>
+    
+    <div className="space-y-6">
+      <section>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">1. Accepting these terms</h3>
+        <p>By viewing or uploading anything on OG Prompts, you agree to these terms.</p>
+      </section>
+
+      <section>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">2. Allowed content</h3>
+        <p>Only text prompts and legitimate pay-links (no malware, no phishing, no adult content where prohibited).</p>
+      </section>
+
+      <section>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">3. Monetization</h3>
+        <p>You may insert one direct-link per prompt. We place zero fees; earnings are between you and your ad network.</p>
+      </section>
+    </div>
   </LegalLayout>
 );

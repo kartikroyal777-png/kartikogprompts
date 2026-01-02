@@ -36,7 +36,7 @@ export default function Home() {
         .from('prompts')
         .select(`
           *,
-          images:prompt_images(storage_path, order_index)
+          prompt_images(storage_path, order_index)
         `)
         .eq('is_published', true)
         .eq('prompt_type', 'standard')
@@ -46,7 +46,10 @@ export default function Home() {
       if (error) throw error;
       
       const formattedPrompts = (data || []).map((p: any) => {
-         const imagesList = (p.images || [])
+         // Robustly check for images in either alias or direct property
+         const rawImages = p.prompt_images || p.images || [];
+         
+         const imagesList = rawImages
             .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
             .map((img: any) => getImageUrl(img.storage_path));
 

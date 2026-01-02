@@ -14,15 +14,21 @@ export function cn(...inputs: ClassValue[]) {
  * 3. Fallbacks
  */
 export function getImageUrl(path: string | null | undefined, fallbackText: string = 'No Image'): string {
+  // If no path is provided, return a direct placeholder (NO PROXY)
   if (!path) {
     return `https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=${encodeURIComponent(fallbackText)}`;
   }
 
+  // If it's already a full URL, return it
   if (path.startsWith('http') || path.startsWith('https')) {
     return path;
   }
 
-  // Generate Supabase Public URL
-  const { data } = supabase.storage.from('prompt-images').getPublicUrl(path);
+  // Clean path to remove any leading slashes which can break Supabase URLs
+  const cleanPath = path.replace(/^\/+/, '');
+
+  // Generate Supabase Public URL for storage paths
+  const { data } = supabase.storage.from('prompt-images').getPublicUrl(cleanPath);
+  
   return data.publicUrl;
 }

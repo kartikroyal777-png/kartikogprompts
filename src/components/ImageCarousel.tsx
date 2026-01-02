@@ -48,7 +48,8 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({
   };
 
   const validImages = images && images.length > 0 ? images : [];
-  // Direct placeholder link
+  
+  // Direct placeholder link (NO PROXY)
   const placeholder = "https://img-wrapper.vercel.app/image?url=https://placehold.co/600x800/1e293b/FFF?text=No+Image";
 
   if (validImages.length === 0) {

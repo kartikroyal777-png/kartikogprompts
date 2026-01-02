@@ -54,7 +54,7 @@ const Prompts = () => {
     try {
       let query = supabase
         .from('prompts')
-        .select(`*, images:prompt_images(storage_path, order_index)`)
+        .select(`*, prompt_images(storage_path, order_index)`)
         .eq('is_published', true)
         .eq('prompt_type', 'standard');
 
@@ -76,7 +76,10 @@ const Prompts = () => {
       if (error) throw error;
 
       const formattedPrompts: Prompt[] = (data || []).map((p: any) => {
-         const imagesList = (p.images || []).map((img: any) => getImageUrl(img.storage_path));
+         // Robustly check for images in either alias or direct property
+         const rawImages = p.prompt_images || p.images || [];
+         
+         const imagesList = rawImages.map((img: any) => getImageUrl(img.storage_path));
 
         let imageUrl = imagesList[0];
         if (!imageUrl) {

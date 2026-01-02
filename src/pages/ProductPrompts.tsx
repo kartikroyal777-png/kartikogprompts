@@ -82,8 +82,9 @@ const ProductPrompts = () => {
       if (error) throw error;
 
       const formattedPrompts: Prompt[] = (data || []).map((p: any) => {
-         // Handle prompt_images from the new query structure
-         const rawImages = p.prompt_images || [];
+         // Robustly check for images in either alias or direct property
+         const rawImages = p.prompt_images || p.images || [];
+         
          const sortedImages = rawImages.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0));
          
          // Map to full URLs

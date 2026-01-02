@@ -59,7 +59,6 @@ const ProductPrompts = () => {
     try {
       let query = supabase
         .from('prompts')
-        // Updated query to use direct table join if alias fails, or just fetch prompt_images
         .select(`*, prompt_images(storage_path, order_index)`)
         .eq('is_published', true)
         .eq('prompt_type', 'product');
@@ -90,8 +89,8 @@ const ProductPrompts = () => {
          // Map to full URLs
          const imagesList = sortedImages.map((img: any) => getImageUrl(img.storage_path));
 
-        // Determine main image
-        let imageUrl = imagesList.length > 0 ? imagesList[0] : getImageUrl(null, 'Product');
+        // Determine main image - Fallback to p.image if prompt_images join fails
+        let imageUrl = imagesList.length > 0 ? imagesList[0] : getImageUrl(p.image);
 
         return {
           ...p,

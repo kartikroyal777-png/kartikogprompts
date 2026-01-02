@@ -32,8 +32,8 @@ uniform vec2 uMouse;
 
 #define PI 3.1415926538
 
-// Reduced line count for better performance (was 40, then 10)
-const int u_line_count = 8;
+// Increased line count for better density (was 8)
+const int u_line_count = 12;
 const float u_line_width = 2.0;
 const float u_line_blur = 2.0;
 
@@ -183,11 +183,10 @@ const Threads: React.FC<ThreadsProps> = ({
     animationFrameId.current = requestAnimationFrame(update);
 
     return () => {
-      clearTimeout(resizeTimeout); // FIX: Clear timeout to prevent memory leak
+      clearTimeout(resizeTimeout);
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
       window.removeEventListener('resize', handleResize);
       if (container && container.contains(gl.canvas)) container.removeChild(gl.canvas);
-      // Force context loss to clean up GPU memory
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
   }, [color, amplitude, distance, enableMouseInteraction]);

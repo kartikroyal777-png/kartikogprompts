@@ -1,10 +1,95 @@
+import { supabase } from './supabase';
 import imageCompression from 'browser-image-compression';
 
 // Add delay helper
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || "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";
-const MODEL = "google/gemini-2.0-flash-exp:free";
+const ENV_API_KEYS = import.meta.env.VITE_OPENROUTER_API_KEY;
+// Fallback key if env is missing
+const DEFAULT_KEY = "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";
+
+// Updated: Use multiple models for fallback to handle 429s
+const MODELS = [
+  "google/gemini-2.0-flash-exp:free",             // Primary (User requested)
+  "google/gemini-2.0-flash-lite-preview-02-05:free", // Backup 1 (Fast & Free)
+  "google/gemini-2.0-pro-exp-02-05:free",         // Backup 2 (High Quality & Free)
+  "nvidia/nemotron-nano-12b-v2-vl:free"           // Backup 3
+];
+
+// Key Management State
+let cachedKeys: string[] = [];
+let lastKeyFetch = 0;
+let currentKeyIndex = 0;
+
+/**
+ * Fetches available API keys from Env and Database
+ */
+async function getKeys(): Promise<string[]> {
+  const now = Date.now();
+  // Cache keys for 1 minute to avoid hammering DB on every request
+  if (cachedKeys.length > 0 && now - lastKeyFetch < 60000) {
+    return cachedKeys;
+  }
+
+  const keys: string[] = [];
+
+  // 1. Get from Env or Default
+  if (ENV_API_KEYS) {
+    const envKeys = ENV_API_KEYS.split(',').map((k: string) => k.trim()).filter((k: string) => k.length > 0);
+    keys.push(...envKeys);
+  } else {
+    keys.push(DEFAULT_KEY);
+  }
+
+  // 2. Get from DB
+  try {
+    const { data, error } = await supabase
+      .from('api_keys')
+      .select('key_value')
+      .eq('is_active', true);
+    
+    if (!error && data) {
+      const dbKeys = data.map(k => k.key_value).filter(k => k && k.length > 0);
+      keys.push(...dbKeys);
+    }
+  } catch (err) {
+    console.warn("Failed to fetch dynamic keys:", err);
+  }
+
+  // Deduplicate
+  cachedKeys = [...new Set(keys)];
+  lastKeyFetch = now;
+  
+  if (cachedKeys.length === 0) {
+    console.warn("No API Keys found!");
+    cachedKeys = [DEFAULT_KEY];
+  }
+
+  return cachedKeys;
+}
+
+/**
+ * Rotates to the next API key in the list.
+ */
+async function rotateKey(): Promise<string> {
+  const keys = await getKeys();
+  if (keys.length === 0) throw new Error("No API Keys available");
+  
+  currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+  console.log(`Rotating API Key to index ${currentKeyIndex + 1}/${keys.length}`);
+  return keys[currentKeyIndex];
+}
+
+/**
+ * Gets the current API key.
+ */
+async function getCurrentKey(): Promise<string> {
+  const keys = await getKeys();
+  if (keys.length === 0) return DEFAULT_KEY;
+  // Ensure index is valid
+  if (currentKeyIndex >= keys.length) currentKeyIndex = 0;
+  return keys[currentKeyIndex];
+}
 
 const GENERAL_PROMPT = `
 You are an expert visual analysis specialist with 15+ years of experience in digital art, photography, graphic design, and AI image generation. You excel at deconstructing visual elements and translating artistic styles into technical specifications.
@@ -291,7 +376,7 @@ Output format:
 - Note shadow density: deep black vs gray vs faint
 - **Facial Expression (CRITICAL)**:
 
-- Capture exact mouth position: closed smile vs slight smile vs neutral vs serious
+- Capture exact mouth position: closed smile/slight smile/neutral/serious
 - Quantify smile intensity: no smile/subtle/moderate/broad
 - Note eye expression and gaze direction
 - Assess overall emotional tone: warm approachable vs serious neutral
@@ -348,7 +433,7 @@ Output format:
 - Part location with precision
 - Volume and movement quality
 - All unique features (bangs, layers, fades, undercuts)
-- **AVOID**: "AI smooth" or overly perfect descriptions - real hair has natural variation
+- **AVOID**: "AI smooth" or overly perfect descriptions - real hair has variation
 **Hand & Gesture Description Must Include:**
 
 - Position of BOTH hands (even if one is hidden)
@@ -424,76 +509,101 @@ export async function generateJsonPrompt(file: File, isProduct: boolean = false)
   const base64Image = await fileToBase64(compressedFile);
   const systemPrompt = isProduct ? PRODUCT_PROMPT : GENERAL_PROMPT;
 
-  let retries = 0;
-  const maxRetries = 3;
+  // Ensure keys are loaded
+  await getKeys();
 
-  while (true) {
-    try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${API_KEY}`,
-          "HTTP-Referer": window.location.origin,
-          "X-Title": "OGPrompts",
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          "model": MODEL,
-          "messages": [
-            {
-              "role": "system",
-              "content": systemPrompt
-            },
-            {
-              "role": "user",
-              "content": [
-                {
-                  "type": "text",
-                  "text": "Analyze this image and provide the JSON output."
-                },
-                {
-                  "type": "image_url",
-                  "image_url": {
-                    "url": base64Image
+  let lastError: Error | null = null;
+
+  // Loop through models to handle 429s (Service Congestion)
+  for (const model of MODELS) {
+    let retries = 0;
+    const maxRetries = 2; // Try each model up to 2 times
+
+    while (retries < maxRetries) {
+      try {
+        const currentKey = await getCurrentKey();
+        console.log(`Attempting analysis with model: ${model} (Key Index: ${currentKeyIndex})`);
+
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${currentKey}`,
+            "HTTP-Referer": window.location.origin,
+            "X-Title": "OGPrompts",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            "model": model,
+            "messages": [
+              {
+                "role": "system",
+                "content": systemPrompt
+              },
+              {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Analyze this image and provide the JSON output."
+                  },
+                  {
+                    "type": "image_url",
+                    "image_url": {
+                      "url": base64Image
+                    }
                   }
-                }
-              ]
-            }
-          ]
-        })
-      });
+                ]
+              }
+            ]
+          })
+        });
 
-      if (response.status === 429) {
-        if (retries >= maxRetries) throw new Error(`API Rate Limit Exceeded after ${maxRetries} retries`);
-        retries++;
-        const waitTime = Math.pow(2, retries) * 1000;
-        console.warn(`Rate limited. Retrying in ${waitTime}ms...`);
-        await delay(waitTime);
-        continue;
+        // Handle 401/429/402 Errors by Rotating Key OR Switching Model
+        if (response.status === 401 || response.status === 429 || response.status === 402) {
+          console.warn(`API Error ${response.status} on ${model}. Rotating key...`);
+          await rotateKey();
+          retries++;
+          lastError = new Error(`API Error: ${response.status} (Key Rotated)`);
+          
+          // Exponential backoff for rate limits
+          if (response.status === 429) {
+              const waitTime = Math.pow(2, retries) * 1000;
+              await delay(waitTime);
+          }
+          continue; // Retry same model with new key
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("API Error Response:", errorText);
+          throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        
+        if (!content) throw new Error("No content received from AI");
+
+        // Extract JSON
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("No JSON found in response");
+        
+        return JSON.parse(jsonMatch[0]);
+
+      } catch (error: any) {
+        console.error(`Analysis failed on ${model}:`, error);
+        lastError = error;
+        
+        // If it's a 429 or 401, we already handled it in the loop above with 'continue'.
+        // If we reach here, it might be a network error or something else.
+        // We break the retry loop to try the NEXT model.
+        break; 
       }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API Error Response:", errorText);
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
-      
-      if (!content) throw new Error("No content received from AI");
-
-      // Extract JSON
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON found in response");
-      
-      return JSON.parse(jsonMatch[0]);
-
-    } catch (error) {
-      console.error("Analysis failed:", error);
-      throw error;
     }
+    console.warn(`Switching from ${model} due to repeated errors...`);
   }
+
+  throw lastError || new Error("Failed to analyze image. All AI models are currently busy.");
 }
 
 function fileToBase64(file: File): Promise<string> {

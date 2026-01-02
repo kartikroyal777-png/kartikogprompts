@@ -30,5 +30,5 @@ export function getImageUrl(path: string | null | undefined, fallbackText: strin
   // Generate Supabase Public URL for storage paths
   const { data } = supabase.storage.from('prompt-images').getPublicUrl(cleanPath);
   
-  return data.publicUrl;
+  return data.publicUrl; 
 }

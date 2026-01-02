@@ -17,9 +17,8 @@ const UploadPage = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [promptTexts, setPromptTexts] = useState<string[]>(['']);
-  
-  // New: Prompt Type Selection
   const [promptType, setPromptType] = useState<'standard' | 'product'>('standard');
+  const [isDragging, setIsDragging] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -29,9 +28,9 @@ const UploadPage = () => {
     credit_name: '',
     instagram_handle: '',
     is_paid: false,
-    price_credits: 5, // Default price
+    price_credits: 5,
     is_bundle: false,
-    instructions: '' // New for Product Prompts
+    instructions: ''
   });
 
   useEffect(() => {
@@ -52,13 +51,18 @@ const UploadPage = () => {
       if (error) throw error;
       if (data && data.length > 0) {
         setCategories(data.map(c => c.name));
-        setSelectedCategories([data[0].name]);
+        // Default to first category if none selected
+        if (selectedCategories.length === 0) {
+            setSelectedCategories([data[0].name]);
+        }
       } else {
         const defaults = promptType === 'standard' 
             ? ['Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape']
             : ['Cosmetics', 'Tech', 'Fashion', 'Food', 'Furniture'];
         setCategories(defaults);
-        setSelectedCategories([defaults[0]]);
+        if (selectedCategories.length === 0) {
+            setSelectedCategories([defaults[0]]);
+        }
       }
     } catch (err) {
       console.error("Error fetching categories", err);
@@ -73,6 +77,36 @@ const UploadPage = () => {
       setPreviews(prev => [...prev, ...newPreviews]);
     }
   };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      // Filter for images only
+      const imageFiles = droppedFiles.filter(file => file.type.startsWith('image/'));
+      
+      if (imageFiles.length > 0) {
+        const newPreviews = imageFiles.map(file => URL.createObjectURL(file));
+        setFiles(prev => [...prev, ...imageFiles]);
+        setPreviews(prev => [...prev, ...newPreviews]);
+      }
+    }
+  };
   
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
@@ -83,9 +117,22 @@ const UploadPage = () => {
     });
   };
 
+  const toggleCategory = (category: string) => {
+    setSelectedCategories(prev => {
+      if (prev.includes(category)) {
+        // Don't allow deselecting the last category
+        if (prev.length === 1) return prev;
+        return prev.filter(c => c !== category);
+      } else {
+        return [...prev, category];
+      }
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (files.length === 0) return alert("Select at least one image.");
+    if (selectedCategories.length === 0) return alert("Select at least one category.");
     
     setLoading(true);
     setUploadProgress(0);
@@ -98,8 +145,8 @@ const UploadPage = () => {
           title: formData.title,
           description: formData.description || (promptType === 'product' ? formData.instructions : promptTexts[0]),
           video_prompt: formData.video_prompt,
-          category: selectedCategories[0],
-          categories: selectedCategories,
+          category: selectedCategories[0], // Primary category for legacy support
+          categories: selectedCategories, // All categories
           monetization_url: formData.monetization_url,
           credit_name: formData.credit_name || profile?.display_name,
           instagram_handle: formData.instagram_handle,
@@ -124,6 +171,8 @@ const UploadPage = () => {
       });
 
       // 3. Upload Images
+      let firstImagePath = '';
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         
@@ -139,20 +188,17 @@ const UploadPage = () => {
         }
         
         const fileExt = compressedFile.type.split('/')[1] || 'webp';
-        // Use prompt ID in path to keep it organized
         const fileName = `${prompt.id}/${Date.now()}_${i}.${fileExt}`;
         
-        // CRITICAL FIX: Add Content-Type to ensure browser renders it as image
+        if (i === 0) firstImagePath = fileName;
+
         const { error: uploadError } = await supabase.storage.from('prompt-images').upload(fileName, compressedFile, {
             cacheControl: '3600',
             upsert: true,
             contentType: compressedFile.type
         });
 
-        if (uploadError) {
-            console.error("Upload failed for file " + i, uploadError);
-            throw uploadError;
-        }
+        if (uploadError) throw uploadError;
         
         await supabase.from('prompt_images').insert({
             prompt_id: prompt.id,
@@ -162,8 +208,13 @@ const UploadPage = () => {
         setUploadProgress(((i + 1) / files.length) * 100);
       }
 
-      // Removed updating the 'image' column in prompts table to avoid errors if column is missing/protected
-      // The app will now rely on prompt_images table
+      // 4. Update Main Image Path (CRITICAL FIX)
+      if (firstImagePath) {
+        await supabase
+            .from('prompts')
+            .update({ image: firstImagePath })
+            .eq('id', prompt.id);
+      }
 
       navigate(promptType === 'product' ? '/product-prompts' : '/prompts');
     } catch (error: any) {
@@ -177,18 +228,23 @@ const UploadPage = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-black pt-28 pb-12 px-4">
       <div className="max-w-3xl mx-auto bg-white dark:bg-gray-900 rounded-3xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-800">
         
-        {/* Type Selection Header */}
         <div className="p-8 border-b border-gray-200 dark:border-gray-800">
             <h1 className="text-2xl font-bold mb-6">Upload Prompt</h1>
             <div className="flex bg-gray-100 dark:bg-black p-1 rounded-xl">
                 <button 
-                    onClick={() => setPromptType('standard')}
+                    onClick={() => {
+                        setPromptType('standard');
+                        setSelectedCategories([]);
+                    }}
                     className={`flex-1 py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all ${promptType === 'standard' ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-500'}`}
                 >
                     <ImageIcon className="w-4 h-4" /> Standard Prompt
                 </button>
                 <button 
-                    onClick={() => setPromptType('product')}
+                    onClick={() => {
+                        setPromptType('product');
+                        setSelectedCategories([]);
+                    }}
                     className={`flex-1 py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all ${promptType === 'product' ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-500'}`}
                 >
                     <Box className="w-4 h-4" /> Product Prompt
@@ -197,10 +253,21 @@ const UploadPage = () => {
         </div>
         
         <form onSubmit={handleSubmit} className="p-8 space-y-8">
-          {/* Image Upload - Fixed Visibility */}
           <div className="space-y-4">
             <label className="block text-sm font-bold">Images {promptType === 'product' && <span className="text-xs font-normal text-gray-500">(Auto-compressed for web)</span>}</label>
-            <div className="grid grid-cols-4 gap-4">
+            
+            {/* Drag & Drop Zone */}
+            <div 
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={cn(
+                    "grid grid-cols-4 gap-4 p-4 border-2 border-dashed rounded-xl transition-all",
+                    isDragging 
+                        ? "border-sky-500 bg-sky-50 dark:bg-sky-900/20" 
+                        : "border-gray-200 dark:border-gray-800 hover:border-sky-500 dark:hover:border-sky-500"
+                )}
+            >
               {previews.map((src, idx) => (
                 <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group bg-gray-100 dark:bg-gray-800">
                   <img src={src} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
@@ -209,10 +276,18 @@ const UploadPage = () => {
                   </button>
                 </div>
               ))}
-              <label className="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center cursor-pointer hover:border-black dark:hover:border-white glow-focus bg-gray-50 dark:bg-gray-800/50 transition-colors">
-                <Upload className="h-6 w-6 text-gray-400" />
+              
+              <label className="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-black dark:hover:border-white glow-focus bg-gray-50 dark:bg-gray-800/50 transition-colors">
+                <Upload className="h-6 w-6 text-gray-400 mb-2" />
+                <span className="text-[10px] text-gray-500 font-bold text-center px-2">Click or Drop</span>
                 <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileChange} />
               </label>
+
+              {files.length === 0 && (
+                 <div className="col-span-3 flex items-center justify-center text-gray-400 text-sm italic">
+                    Drag and drop images here to upload
+                 </div>
+              )}
             </div>
           </div>
 
@@ -227,18 +302,34 @@ const UploadPage = () => {
                 className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-black dark:focus:ring-white outline-none glow-focus"
               />
             </div>
+            
+            {/* Multi-Select Categories */}
             <div>
-                <label className="block text-sm font-bold mb-2">Category</label>
-                <select 
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 glow-focus"
-                    onChange={(e) => setSelectedCategories([e.target.value])}
-                >
-                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <label className="block text-sm font-bold mb-2">Categories (Select Multiple)</label>
+                <div className="flex flex-wrap gap-2 p-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 min-h-[52px]">
+                    {categories.map(cat => {
+                        const isSelected = selectedCategories.includes(cat);
+                        return (
+                            <button
+                                key={cat}
+                                type="button"
+                                onClick={() => toggleCategory(cat)}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center gap-1.5",
+                                    isSelected
+                                        ? "bg-black text-white dark:bg-white dark:text-black border-transparent shadow-sm"
+                                        : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-400"
+                                )}
+                            >
+                                {isSelected && <Check className="w-3 h-3" />}
+                                {cat}
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
           </div>
 
-          {/* Premium Option - Restored */}
           <div className="flex flex-col gap-4 p-4 bg-gray-50 dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -278,7 +369,6 @@ const UploadPage = () => {
             )}
           </div>
 
-          {/* Product Specific Fields */}
           {promptType === 'product' && (
              <div>
                 <label className="block text-sm font-bold mb-2">Instructions (Optional)</label>
@@ -292,7 +382,6 @@ const UploadPage = () => {
              </div>
           )}
 
-          {/* Prompt Text */}
           <div>
             <label className="block text-sm font-bold mb-2">Prompt Text</label>
             <textarea
@@ -309,7 +398,6 @@ const UploadPage = () => {
             />
           </div>
 
-          {/* Video Prompt */}
           <div>
             <label className="block text-sm font-bold mb-2">Video Prompt (Optional)</label>
             <textarea

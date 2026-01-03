@@ -32,7 +32,7 @@ uniform vec2 uMouse;
 
 #define PI 3.1415926538
 
-// Increased line count for better density (was 8)
+// Increased line count for better density
 const int u_line_count = 12;
 const float u_line_width = 2.0;
 const float u_line_blur = 2.0;
@@ -144,12 +144,12 @@ const Threads: React.FC<ThreadsProps> = ({
       program.uniforms.iResolution.value.b = clientWidth / clientHeight;
     }
     
+    // Initial resize
     resize();
     
-    let resizeTimeout: any;
+    // FIX: Removed setTimeout debounce to prevent "t._onTimeout is not a function" error
     const handleResize = () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(resize, 200); // Debounce resize
+        resize();
     };
     window.addEventListener('resize', handleResize);
 
@@ -183,11 +183,14 @@ const Threads: React.FC<ThreadsProps> = ({
     animationFrameId.current = requestAnimationFrame(update);
 
     return () => {
-      clearTimeout(resizeTimeout);
+      // Cleanup
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
       window.removeEventListener('resize', handleResize);
       if (container && container.contains(gl.canvas)) container.removeChild(gl.canvas);
-      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      
+      // Safely lose context
+      const loseContext = gl.getExtension('WEBGL_lose_context');
+      if (loseContext) loseContext.loseContext();
     };
   }, [color, amplitude, distance, enableMouseInteraction]);
 

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Upload, Image as ImageIcon, X, Loader2, Coins, Layers, Check, Box, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import imageCompression from 'browser-image-compression';
-import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
 
@@ -51,18 +50,14 @@ const UploadPage = () => {
       if (error) throw error;
       if (data && data.length > 0) {
         setCategories(data.map(c => c.name));
-        // Default to first category if none selected
-        if (selectedCategories.length === 0) {
-            setSelectedCategories([data[0].name]);
-        }
+        // Reset selection when switching types
+        setSelectedCategories([]);
       } else {
         const defaults = promptType === 'standard' 
             ? ['Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape']
             : ['Cosmetics', 'Tech', 'Fashion', 'Food', 'Furniture'];
         setCategories(defaults);
-        if (selectedCategories.length === 0) {
-            setSelectedCategories([defaults[0]]);
-        }
+        setSelectedCategories([]);
       }
     } catch (err) {
       console.error("Error fetching categories", err);
@@ -120,8 +115,6 @@ const UploadPage = () => {
   const toggleCategory = (category: string) => {
     setSelectedCategories(prev => {
       if (prev.includes(category)) {
-        // Don't allow deselecting the last category
-        if (prev.length === 1) return prev;
         return prev.filter(c => c !== category);
       } else {
         return [...prev, category];

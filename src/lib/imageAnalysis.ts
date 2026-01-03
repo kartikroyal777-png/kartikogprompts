@@ -5,14 +5,14 @@ import imageCompression from 'browser-image-compression';
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const ENV_API_KEYS = import.meta.env.VITE_OPENROUTER_API_KEY;
-// Fallback key if env is missing
+// Fallback key if env is missing - HARDCODED USER KEY
 const DEFAULT_KEY = "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";
 
-// Updated: Use multiple models for fallback to handle 429s
+// Updated: Reordered models to prioritize more stable ones to avoid Model-based 401s
 const MODELS = [
-  "google/gemini-2.0-flash-exp:free",             // Primary (User requested)
-  "google/gemini-2.0-flash-lite-preview-02-05:free", // Backup 1 (Fast & Free)
-  "google/gemini-2.0-pro-exp-02-05:free",         // Backup 2 (High Quality & Free)
+  "google/gemini-2.0-flash-lite-preview-02-05:free", // Primary (Newer, more stable)
+  "google/gemini-2.0-flash-exp:free",             // Backup 1 (Original request)
+  "google/gemini-2.0-pro-exp-02-05:free",         // Backup 2 (High Quality)
   "nvidia/nemotron-nano-12b-v2-vl:free"           // Backup 3
 ];
 
@@ -33,15 +33,16 @@ async function getKeys(): Promise<string[]> {
 
   const keys: string[] = [];
 
-  // 1. Get from Env or Default
+  // 1. ALWAYS push the hardcoded DEFAULT_KEY first to ensure the fresh key is tried
+  keys.push(DEFAULT_KEY);
+
+  // 2. Get from Env (deduplicate later)
   if (ENV_API_KEYS) {
     const envKeys = ENV_API_KEYS.split(',').map((k: string) => k.trim()).filter((k: string) => k.length > 0);
     keys.push(...envKeys);
-  } else {
-    keys.push(DEFAULT_KEY);
   }
 
-  // 2. Get from DB
+  // 3. Get from DB
   try {
     const { data, error } = await supabase
       .from('api_keys')
@@ -558,8 +559,27 @@ export async function generateJsonPrompt(file: File, isProduct: boolean = false)
           })
         });
 
-        // Handle 401/429/402 Errors by Rotating Key OR Switching Model
-        if (response.status === 401 || response.status === 429 || response.status === 402) {
+        // Handle 401 (Unauthorized) specifically
+        if (response.status === 401) {
+          console.warn(`Key ${currentKeyIndex} failed (401). Removing from pool.`);
+          // Remove this key from cachedKeys
+          const badKey = await getCurrentKey();
+          cachedKeys = cachedKeys.filter(k => k !== badKey);
+          
+          if (cachedKeys.length === 0) {
+             // If we ran out of keys, try to re-fetch or fail
+             throw new Error("All API keys are invalid (401).");
+          }
+          
+          // Rotate (effectively picks next available key)
+          await rotateKey(); 
+          retries++;
+          lastError = new Error(`API Error: 401 (Key Invalid)`);
+          continue;
+        }
+
+        // Handle 429/402 Errors by Rotating Key OR Switching Model
+        if (response.status === 429 || response.status === 402) {
           console.warn(`API Error ${response.status} on ${model}. Rotating key...`);
           await rotateKey();
           retries++;

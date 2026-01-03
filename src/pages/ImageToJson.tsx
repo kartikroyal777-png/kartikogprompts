@@ -7,9 +7,12 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import AuthModal from '../components/AuthModal';
 import { Link } from 'react-router-dom';
+import DotGrid from '../components/DotGrid';
+import { useTheme } from '../context/ThemeContext';
 
 const ImageToJson = () => {
-  const { user, wallet, refreshWallet } = useAuth();
+  const { user, wallet, refreshProfile } = useAuth();
+  const { theme } = useTheme();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -111,7 +114,7 @@ const ImageToJson = () => {
     }
 
     // Scenario 3: Free trials used, user logged in -> Check Credits
-    if ((wallet?.credits || 0) < 1) {
+    if ((wallet?.balance_credits || 0) < 1) {
       toast.error("Insufficient credits. Please buy more credits.");
       return;
     }
@@ -119,8 +122,9 @@ const ImageToJson = () => {
     // Deduct Credit & Generate
     setProcessingPayment(true);
     try {
+      // Use standard parameter names matching database function signature
       const { data, error } = await supabase.rpc('deduct_credits', {
-        user_uuid: user.id,
+        user_id: user.id,
         amount: 1,
         description: 'Image to JSON Generation'
       });
@@ -133,14 +137,29 @@ const ImageToJson = () => {
       }
 
       // Refresh wallet to show new balance
-      refreshWallet();
+      await refreshProfile();
       
       // Proceed with generation
       await processGeneration();
 
     } catch (error: any) {
       console.error('Payment error:', error);
-      toast.error("Failed to process credit deduction");
+      // Fallback: If RPC failed due to parameter mismatch, try p_ prefix
+      if (error.message?.includes('function') || error.message?.includes('argument')) {
+          try {
+             const { error: retryError } = await supabase.rpc('deduct_credits', {
+                p_user_id: user.id,
+                p_amount: 1,
+                p_description: 'Image to JSON Generation'
+             });
+             if (!retryError) {
+                 await refreshProfile();
+                 await processGeneration();
+                 return;
+             }
+          } catch (e) { /* ignore fallback error */ }
+      }
+      toast.error("Failed to process credit deduction: " + error.message);
     } finally {
       setProcessingPayment(false);
     }
@@ -182,14 +201,18 @@ const ImageToJson = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-black pt-24 pb-12 px-4 relative overflow-hidden">
       {/* Animated Background */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-        <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-gray-400 opacity-20 blur-[100px]"></div>
+      <div className="fixed inset-0 z-0 opacity-40 pointer-events-none">
+        <DotGrid 
+          baseColor={theme === 'dark' ? '#0ea5e9' : '#38bdf8'}
+          activeColor="#0284c7"
+          dotSize={8}
+          gap={25}
+        />
       </div>
 
       <div className="max-w-4xl mx-auto relative z-10">
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight">
+          <h1 className="text-4xl md:text-5xl font-black mb-4 tracking-tight text-slate-900 dark:text-white">
             Image to <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-gray-600">JSON Prompt</span>
           </h1>
           <p className="text-gray-600 dark:text-gray-400 text-lg max-w-2xl mx-auto mb-6">
@@ -201,22 +224,22 @@ const ImageToJson = () => {
              {freeTrialsLeft > 0 ? (
                <>
                  <Sparkles className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                 <span className="font-bold text-sm">{freeTrialsLeft} Free Trials Left Today</span>
+                 <span className="font-bold text-sm text-slate-900 dark:text-white">{freeTrialsLeft} Free Trials Left Today</span>
                </>
              ) : (
                <>
                  <Zap className="w-4 h-4 text-blue-500 fill-blue-500" />
-                 <span className="font-bold text-sm">Cost: 1 Credit / Generation</span>
+                 <span className="font-bold text-sm text-slate-900 dark:text-white">Cost: 1 Credit / Generation</span>
                  {user && (
                    <span className="text-xs text-gray-500 border-l border-gray-300 dark:border-gray-700 pl-2 ml-2">
-                     Balance: {wallet?.credits || 0}
+                     Balance: {wallet?.balance_credits || 0}
                    </span>
                  )}
                </>
              )}
           </div>
           
-          {freeTrialsLeft === 0 && user && (wallet?.credits || 0) < 1 && (
+          {freeTrialsLeft === 0 && user && (wallet?.balance_credits || 0) < 1 && (
              <div className="mt-3">
                <Link to="/buy-credits" className="text-xs font-bold text-blue-500 hover:underline">
                  Buy Credits &rarr;

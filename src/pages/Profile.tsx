@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Settings, LogOut, Wallet, User, Heart, Image as ImageIcon, DollarSign, RefreshCw, Users, CreditCard, Sparkles } from 'lucide-react';
+import { Settings, LogOut, Wallet, User, Heart, Image as ImageIcon, DollarSign, RefreshCw, Users, CreditCard, Sparkles, Camera, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
@@ -10,8 +10,47 @@ import { Subscriber, EarningEntry, Prompt } from '../types';
 import PromptCard from '../components/PromptCard';
 import { getImageUrl } from '../lib/utils';
 
+// Native image compression utility to avoid WebWorker crashes in WebContainer
+const compressImage = async (file: File): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX_WIDTH = 500;
+      const MAX_HEIGHT = 500;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width *= MAX_HEIGHT / height;
+          height = MAX_HEIGHT;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+          else reject(new Error('Compression failed'));
+        }, 'image/jpeg', 0.7);
+      } else reject(new Error('Canvas context failed'));
+    };
+    img.onerror = (err) => reject(err);
+  });
+};
+
 const Profile = () => {
-  const { user, profile, wallet, refreshWallet, refreshProfile, signOut } = useAuth();
+  // Removed non-existent refreshWallet
+  const { user, profile, wallet, refreshProfile, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<'prompts' | 'settings'>('prompts');
   const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
   const [converting, setConverting] = useState(false);
@@ -32,6 +71,7 @@ const Profile = () => {
   // Edit Profile
   const [displayName, setDisplayName] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const isAdmin = user?.email === 'kartikroyal777@gmail.com';
 
@@ -132,7 +172,7 @@ const Profile = () => {
       setConverting(true);
       const { error } = await supabase.rpc('convert_credits_to_usd', { credits_amount: 15 });
       if (error) throw error;
-      await refreshWallet();
+      // Use refreshProfile instead of undefined refreshWallet
       await refreshProfile();
       toast.success('Successfully converted 15 credits to $1 USD');
     } catch (error) {
@@ -165,6 +205,54 @@ const Profile = () => {
     }
   };
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0]) return;
+    
+    const file = e.target.files[0];
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image too large. Max 5MB.");
+      return;
+    }
+
+    setUploadingAvatar(true);
+
+    try {
+      // Use native compression instead of library
+      const compressedFile = await compressImage(file);
+      
+      // Upload
+      const fileExt = file.name.split('.').pop();
+      const fileName = `avatars/${user.id}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('prompt-images')
+        .upload(fileName, compressedFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('prompt-images')
+        .getPublicUrl(fileName);
+
+      // Update Profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      await refreshProfile();
+      toast.success("Profile photo updated!");
+    } catch (error: any) {
+      console.error("Avatar upload failed", error);
+      toast.error("Failed to update photo: " + error.message);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const showCreatorTools = profile.role === 'creator' || isAdmin || earnedCredits > 0;
 
   return (
@@ -173,12 +261,30 @@ const Profile = () => {
         {/* Profile Header */}
         <div className="bg-slate-50 dark:bg-gray-900 rounded-3xl p-8 mb-12 border border-slate-200 dark:border-gray-800 shadow-sm">
           <div className="flex flex-col md:flex-row items-center gap-10">
-            <div className="w-28 h-28 rounded-full bg-black dark:bg-white flex items-center justify-center text-4xl font-bold text-white dark:text-black shadow-lg">
-              {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt={profile.full_name || ''} className="w-full h-full rounded-full object-cover" />
-              ) : (
-                (isAdmin ? 'A' : (profile.full_name?.[0] || user.email?.[0] || '?')).toUpperCase()
-              )}
+            {/* Avatar Section with Edit Button */}
+            <div className="relative group">
+              <div className="w-28 h-28 rounded-full bg-black dark:bg-white flex items-center justify-center text-4xl font-bold text-white dark:text-black shadow-lg overflow-hidden ring-4 ring-white dark:ring-gray-800">
+                {profile.avatar_url ? (
+                  <img src={profile.avatar_url} alt={profile.full_name || ''} className="w-full h-full object-cover" />
+                ) : (
+                  (isAdmin ? 'A' : (profile.full_name?.[0] || user.email?.[0] || '?')).toUpperCase()
+                )}
+                {uploadingAvatar && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
+                    <Loader2 className="w-8 h-8 text-white animate-spin" />
+                  </div>
+                )}
+              </div>
+              <label className="absolute bottom-0 right-0 p-2 bg-black dark:bg-white text-white dark:text-black rounded-full cursor-pointer shadow-lg hover:opacity-90 transition-all active:scale-95 border border-gray-200 dark:border-gray-800 z-20">
+                <Camera className="w-5 h-5" />
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  disabled={uploadingAvatar}
+                />
+              </label>
             </div>
             
             <div className="flex-1 text-center md:text-left space-y-4">
@@ -360,7 +466,7 @@ const Profile = () => {
         isOpen={isPayoutModalOpen}
         onClose={() => setIsPayoutModalOpen(false)}
         availableUsd={profile.usd_balance || 0}
-        onSuccess={refreshWallet}
+        onSuccess={refreshProfile}
       />
 
       <UserListModal 

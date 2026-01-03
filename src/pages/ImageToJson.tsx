@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Image as ImageIcon, Copy, Check, Loader2, Sparkles, AlertCircle, Zap } from 'lucide-react';
+import { Upload, Image as ImageIcon, Copy, Check, Loader2, Sparkles, AlertCircle, Zap, Send, Mail, FileText } from 'lucide-react';
 import { generateJsonPrompt } from '../lib/imageAnalysis';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,6 +9,7 @@ import AuthModal from '../components/AuthModal';
 import { Link } from 'react-router-dom';
 import DotGrid from '../components/DotGrid';
 import { useTheme } from '../context/ThemeContext';
+import imageCompression from 'browser-image-compression';
 
 const ImageToJson = () => {
   const { user, wallet, refreshProfile } = useAuth();
@@ -25,9 +26,19 @@ const ImageToJson = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
 
+  // Request Prompt State
+  const [requestText, setRequestText] = useState('');
+  const [requestEmail, setRequestEmail] = useState('');
+  const [requestImage, setRequestImage] = useState<File | null>(null);
+  const [requestImagePreview, setRequestImagePreview] = useState<string | null>(null);
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+
   useEffect(() => {
     checkDailyUsage();
-  }, []);
+    if (user && user.email) {
+        setRequestEmail(user.email);
+    }
+  }, [user]);
 
   const checkDailyUsage = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -198,6 +209,71 @@ const ImageToJson = () => {
     }
   };
 
+  // Request Prompt Handlers
+  const handleRequestImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setRequestImage(file);
+      setRequestImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!requestText.trim()) return toast.error("Please describe the prompt you need.");
+    if (!requestEmail.trim()) return toast.error("Please provide your email.");
+
+    setSubmittingRequest(true);
+    try {
+        let imageUrl = null;
+
+        // Upload image if present
+        if (requestImage) {
+            const options = {
+                maxSizeMB: 0.5,
+                maxWidthOrHeight: 1024,
+                useWebWorker: false,
+            };
+            const compressedFile = await imageCompression(requestImage, options);
+            const fileExt = compressedFile.type.split('/')[1] || 'jpg';
+            const fileName = `requests/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+                .from('prompt-images')
+                .upload(fileName, compressedFile);
+            
+            if (uploadError) throw uploadError;
+            
+            const { data } = supabase.storage.from('prompt-images').getPublicUrl(fileName);
+            imageUrl = data.publicUrl;
+        }
+
+        // Insert Request
+        const { error: insertError } = await supabase
+            .from('prompt_requests')
+            .insert({
+                email: requestEmail,
+                request_details: requestText,
+                reference_image: imageUrl,
+                user_id: user?.id || null
+            });
+
+        if (insertError) throw insertError;
+
+        toast.success("Request sent to Admin!");
+        setRequestText('');
+        setRequestImage(null);
+        setRequestImagePreview(null);
+        if (!user) setRequestEmail('');
+
+    } catch (error: any) {
+        console.error("Request failed:", error);
+        toast.error("Failed to send request: " + error.message);
+    } finally {
+        setSubmittingRequest(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-black pt-24 pb-12 px-4 relative overflow-hidden">
       {/* Animated Background */}
@@ -248,7 +324,7 @@ const ImageToJson = () => {
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-24">
           {/* Upload Section */}
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-900 rounded-3xl p-2 shadow-xl border border-gray-100 dark:border-gray-800">
@@ -385,6 +461,93 @@ const ImageToJson = () => {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Request Custom Prompt Section */}
+        <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 shadow-xl border border-gray-200 dark:border-gray-800">
+            <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Can't find what you need?</h2>
+                <p className="text-slate-500 dark:text-slate-400">Request a custom prompt from our team. We'll craft it and email it to you.</p>
+            </div>
+
+            <form onSubmit={handleRequestSubmit} className="max-w-2xl mx-auto space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                Describe your prompt idea <span className="text-red-500">*</span>
+                            </label>
+                            <textarea 
+                                required
+                                value={requestText}
+                                onChange={e => setRequestText(e.target.value)}
+                                rows={6}
+                                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-black dark:focus:ring-white outline-none resize-none"
+                                placeholder="E.g., A futuristic cyberpunk city with neon lights, raining, reflections on wet pavement..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                Your Email <span className="text-red-500">*</span>
+                            </label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                                <input 
+                                    type="email"
+                                    required
+                                    value={requestEmail}
+                                    onChange={e => setRequestEmail(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-black dark:focus:ring-white outline-none"
+                                    placeholder="you@example.com"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                            Reference Image (Optional)
+                        </label>
+                        <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-black dark:hover:border-white transition-colors bg-gray-50 dark:bg-black group">
+                            {requestImagePreview ? (
+                                <>
+                                    <img src={requestImagePreview} alt="Reference" className="w-full h-full object-cover" />
+                                    <button 
+                                        type="button"
+                                        onClick={() => { setRequestImage(null); setRequestImagePreview(null); }}
+                                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <div className="w-4 h-4 flex items-center justify-center font-bold">×</div>
+                                    </button>
+                                </>
+                            ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
+                                    <ImageIcon className="w-8 h-8 mb-2" />
+                                    <span className="text-xs font-bold">Upload Reference</span>
+                                </div>
+                            )}
+                            <input 
+                                type="file" 
+                                accept="image/*"
+                                onChange={handleRequestImageChange}
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                            />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2 text-center">
+                            Upload a style reference to help us understand better.
+                        </p>
+                    </div>
+                </div>
+
+                <button
+                    type="submit"
+                    disabled={submittingRequest}
+                    className="w-full py-4 bg-black dark:bg-white text-white dark:text-black font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-lg"
+                >
+                    {submittingRequest ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                    Send Request to Admin
+                </button>
+            </form>
         </div>
       </div>
 

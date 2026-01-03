@@ -6,13 +6,14 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const ENV_API_KEYS = import.meta.env.VITE_OPENROUTER_API_KEY;
 // Fallback key if env is missing - HARDCODED USER KEY
-const DEFAULT_KEY = "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";
+const DEFAULT_KEY = "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";
 
-// Updated: Reordered models to prioritize more stable ones to avoid Model-based 401s
+// Updated: Prioritize valid and stable models
+// Removed 'google/gemini-2.0-pro-exp-02-05:free' as it causes 400 errors
 const MODELS = [
-  "google/gemini-2.0-flash-lite-preview-02-05:free", // Primary (Newer, more stable)
-  "google/gemini-2.0-flash-exp:free",             // Backup 1 (Original request)
-  "google/gemini-2.0-pro-exp-02-05:free",         // Backup 2 (High Quality)
+  "google/gemini-2.0-flash-exp:free",             // Primary
+  "google/gemini-2.0-flash-thinking-exp:free",    // Backup 1 (High capability)
+  "meta-llama/llama-3.2-11b-vision-instruct:free", // Backup 2
   "nvidia/nemotron-nano-12b-v2-vl:free"           // Backup 3
 ];
 
@@ -34,7 +35,7 @@ async function getKeys(): Promise<string[]> {
   const keys: string[] = [];
 
   // 1. ALWAYS push the hardcoded DEFAULT_KEY first to ensure the fresh key is tried
-  keys.push(DEFAULT_KEY);
+  if (DEFAULT_KEY) keys.push(DEFAULT_KEY.trim());
 
   // 2. Get from Env (deduplicate later)
   if (ENV_API_KEYS) {
@@ -63,7 +64,8 @@ async function getKeys(): Promise<string[]> {
   
   if (cachedKeys.length === 0) {
     console.warn("No API Keys found!");
-    cachedKeys = [DEFAULT_KEY];
+    // Ensure we at least have the default key if it exists
+    if (DEFAULT_KEY) cachedKeys = [DEFAULT_KEY.trim()];
   }
 
   return cachedKeys;
@@ -86,7 +88,7 @@ async function rotateKey(): Promise<string> {
  */
 async function getCurrentKey(): Promise<string> {
   const keys = await getKeys();
-  if (keys.length === 0) return DEFAULT_KEY;
+  if (keys.length === 0) return DEFAULT_KEY.trim();
   // Ensure index is valid
   if (currentKeyIndex >= keys.length) currentKeyIndex = 0;
   return keys[currentKeyIndex];
@@ -94,6 +96,10 @@ async function getCurrentKey(): Promise<string> {
 
 const GENERAL_PROMPT = `
 You are an expert visual analysis specialist with 15+ years of experience in digital art, photography, graphic design, and AI image generation. You excel at deconstructing visual elements and translating artistic styles into technical specifications.
+
+## Context & Goal
+You will give a JSON prompt for this image. This prompt will be used by another person to make their picture look like this style.
+**CRITICAL:** In the prompt, explicitly confirm to use the uploaded face, and use the uploaded person's hairstyle and hair color so that the AI model (NanoBanana) can understand it's about preserving the user's identity.
 
 Your task: Analyze uploaded images and return comprehensive JSON profiles for recreating the visual style.
 
@@ -184,7 +190,7 @@ Output format:
 "visual_style": "clean/cluttered/minimal/busy/organic/geometric/fluid/structured"
 },
 "typography": {
-"present": true/false,
+"present": true,
 "fonts": [
 {
 "type": "sans-serif/serif/script/display/handwritten",
@@ -478,18 +484,103 @@ generation_parameters": { "prompts": [  [UPLOADED_PERSON_FACE], retaining [UPLOA
 `;
 
 const PRODUCT_PROMPT = `
-You are an expert visual analysis specialist. Analyze this product image to create a generic, reusable photoshoot prompt for marketing agencies. The goal is to create a prompt that an agency can use with ANY product to achieve this exact style, lighting, and composition.
+You are an expert visual analysis specialist. Analyze this product image to create a generic, reusable photoshoot prompt for marketing agencies.
 
 ## Context & Goal
-Create a prompt that is generic (e.g., "a sleek bottle" instead of "Coca Cola bottle") so agencies can swap in their product. Focus on brand kit elements, background, lighting, and composition.
+You are creating a prompt for a product photoshoot. This prompt will be used by a marketing agency for different products with different unique brand color styles.
+The prompt must be GENERIC. When an agency uses this prompt by uploading their particular product, the background color, elements, and brand kit should match the product they upload.
+The theme should be the same as the analyzed image, but adaptable to different brand kits.
+The prompt should be written so that an AI generation model (like NanoBanana) understands instantly what the user wants.
+
+Format inspiration:
+"Professional product photoshoot of [PRODUCT NAME] centered between two halves of a dark, jagged volcanic rock shell. The interior of the rock shell is lined with [BRAND COLOR] glowing crystals. The [PRODUCT TYPE] has a frosted texture with internal [BRAND COLOR] bioluminescence and micro-droplets of condensation."
 
 ## Output Format
-Return ONLY valid JSON. No explanations.
+Return ONLY valid JSON. No explanations, no commentary, no markdown formatting.
 
 ## Core JSON Schema
-(Use the same schema as above, but focus the 'generation_parameters.prompts' on generic product photography instructions)
-
-generation_parameters": { "prompts": [ "Professional product photoshoot of [PRODUCT NAME] centered between two halves of a dark, jagged volcanic rock shell. The interior of the rock shell is lined with [BRAND COLOR] glowing crystals. The [PRODUCT TYPE] has a frosted texture with internal [BRAND COLOR] bioluminescence and micro-droplets of condensation.
+{
+"metadata": {
+"confidence_score": "high/medium/low",
+"image_type": "photograph/digital art/illustration/graphic design/mixed media",
+"primary_purpose": "marketing/editorial/social media/product/portrait/landscape/abstract"
+},
+"composition": {
+"rule_applied": "rule of thirds/golden ratio/center composition/symmetry/asymmetry",
+"aspect_ratio": "width:height ratio or format description",
+"layout": "grid/single subject/multi-element/layered",
+"focal_points": ["Primary focal point", "Secondary focal point"],
+"visual_hierarchy": "Description",
+"balance": "symmetric/asymmetric/radial"
+},
+"color_profile": {
+"dominant_colors": [{ "color": "name", "hex": "#000000", "percentage": "approx %", "role": "background/accent/primary" }],
+"color_palette": "complementary/analogous/triadic/monochromatic/split-complementary",
+"temperature": "warm/cool/neutral",
+"saturation": "high/moderate/low",
+"contrast": "high/medium/low"
+},
+"lighting": {
+"type": "natural/artificial/mixed/studio",
+"source_count": "single/multiple",
+"direction": "front/side/back/top",
+"directionality": "directional/diffused",
+"quality": "hard/soft",
+"intensity": "bright/moderate/low",
+"contrast_ratio": "high/medium/low",
+"mood": "cheerful/dramatic/mysterious/professional",
+"shadows": { "type": "harsh/soft", "density": "deep/faint", "placement": "under/wall", "length": "short/long" },
+"highlights": { "treatment": "blown/preserved", "placement": "face/object" },
+"ambient_fill": "present/absent",
+"light_temperature": "warm/neutral/cool"
+},
+"technical_specs": {
+"medium": "photography/3D/painting",
+"style": "realistic/stylized/minimalist",
+"texture": "smooth/grainy",
+"sharpness": "sharp/soft",
+"grain": "none/film/digital",
+"depth_of_field": "shallow/deep",
+"perspective": "straight/angle/isometric"
+},
+"artistic_elements": {
+"genre": "portrait/landscape/product",
+"influences": ["influence1"],
+"mood": "energetic/calm",
+"atmosphere": "description",
+"visual_style": "clean/cluttered"
+},
+"typography": {
+"present": true,
+"fonts": [{ "type": "sans/serif", "weight": "bold", "characteristics": "modern" }],
+"placement": "overlay/integrated",
+"integration": "subtle/prominent"
+},
+"subject_analysis": {
+"primary_subject": "Main subject description",
+"positioning": "center/left/right",
+"scale": "close-up/medium/full",
+"interaction": "isolated/interacting"
+},
+"background": {
+"setting_type": "indoor/outdoor/studio",
+"spatial_depth": "shallow/deep",
+"elements_detailed": [{ "item": "name", "position": "left/right", "distance": "foreground/background", "size": "large/small", "condition": "new/worn", "specific_features": "details" }],
+"wall_surface": { "material": "paint/brick", "surface_treatment": "smooth/rough", "texture": "smooth", "finish": "matte/glossy", "color": "color", "color_variation": "uniform", "features": "clean", "wear_indicators": "pristine" },
+"floor_surface": { "material": "wood/tile", "color": "color", "pattern": "solid" },
+"objects_catalog": "List objects",
+"background_treatment": "blurred/sharp"
+},
+"generation_parameters": {
+"prompts": [
+"Professional product photoshoot of [PRODUCT NAME] centered between two halves of a dark, jagged volcanic rock shell. The interior of the rock shell is lined with [BRAND COLOR] glowing crystals. The [PRODUCT TYPE] has a frosted texture with internal [BRAND COLOR] bioluminescence and micro-droplets of condensation.",
+"Alternative angle or variation prompt"
+],
+"keywords": ["keyword1", "keyword2", "keyword3"],
+"technical_settings": "Camera settings",
+"post_processing": "Editing techniques"
+}
+}
 `;
 
 export async function generateJsonPrompt(file: File, isProduct: boolean = false): Promise<any> {
@@ -497,7 +588,7 @@ export async function generateJsonPrompt(file: File, isProduct: boolean = false)
   const options = {
     maxSizeMB: 0.8,
     maxWidthOrHeight: 1024,
-    useWebWorker: true,
+    useWebWorker: false, // Fix: Disable WebWorker to prevent terminal crashes
   };
   
   let compressedFile = file;
@@ -529,9 +620,8 @@ export async function generateJsonPrompt(file: File, isProduct: boolean = false)
           method: "POST",
           headers: {
             "Authorization": `Bearer ${currentKey}`,
-            "HTTP-Referer": window.location.origin,
-            "X-Title": "OGPrompts",
             "Content-Type": "application/json"
+            // Removed Referer/Title to avoid potential strict checks on some providers
           },
           body: JSON.stringify({
             "model": model,
@@ -561,21 +651,30 @@ export async function generateJsonPrompt(file: File, isProduct: boolean = false)
 
         // Handle 401 (Unauthorized) specifically
         if (response.status === 401) {
-          console.warn(`Key ${currentKeyIndex} failed (401). Removing from pool.`);
-          // Remove this key from cachedKeys
-          const badKey = await getCurrentKey();
-          cachedKeys = cachedKeys.filter(k => k !== badKey);
+          console.warn(`Key ${currentKeyIndex} failed (401).`);
           
-          if (cachedKeys.length === 0) {
-             // If we ran out of keys, try to re-fetch or fail
-             throw new Error("All API keys are invalid (401).");
+          // Only remove key if we have others, otherwise keep it (might be model specific)
+          const keys = await getKeys();
+          if (keys.length > 1) {
+             const badKey = await getCurrentKey();
+             cachedKeys = cachedKeys.filter(k => k !== badKey);
+             await rotateKey(); 
+             retries++;
+             lastError = new Error(`API Error: 401 (Key Invalid - Rotated)`);
+             continue;
+          } else {
+             // If it's the only key, break retry loop to try NEXT model instead of throwing
+             console.warn("401 with single key - attempting next model...");
+             lastError = new Error("API Key Invalid (401) for this model.");
+             break;
           }
-          
-          // Rotate (effectively picks next available key)
-          await rotateKey(); 
-          retries++;
-          lastError = new Error(`API Error: 401 (Key Invalid)`);
-          continue;
+        }
+
+        // Handle 400 (Bad Request - Invalid Model)
+        if (response.status === 400) {
+             console.warn(`Model ${model} returned 400 (Bad Request). Likely invalid model ID. Skipping...`);
+             lastError = new Error(`Model ${model} is invalid.`);
+             break; // Break retry loop for this model
         }
 
         // Handle 429/402 Errors by Rotating Key OR Switching Model

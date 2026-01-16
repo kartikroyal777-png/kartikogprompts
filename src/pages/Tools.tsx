@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Image as ImageIcon, MessageSquare, BookOpen, Send, Copy, Check, Loader2, Lock, X, ArrowRight } from 'lucide-react';
+import { Sparkles, MessageSquare, BookOpen, Copy, Check, Loader2, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { enhancePrompt } from '../lib/gemini';
-import { generateJsonPrompt } from '../lib/imageAnalysis';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import DotGrid from '../components/DotGrid';
@@ -14,7 +13,7 @@ export default function Tools() {
   const { user, isPro } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'enhancer' | 'image-analysis' | 'custom' | 'guide'>('enhancer');
+  const [activeTab, setActiveTab] = useState<'enhancer' | 'custom' | 'guide'>('enhancer');
   
   // Enhancer State
   const [messyPrompt, setMessyPrompt] = useState('');
@@ -23,16 +22,15 @@ export default function Tools() {
   const [enhancerTrials, setEnhancerTrials] = useState(5);
   const [copied, setCopied] = useState(false);
 
-  // Image Analysis State
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-
   // Custom Request State
   const [requestText, setRequestText] = useState('');
   const [requestEmail, setRequestEmail] = useState('');
+  const [requestImage, setRequestImage] = useState<File | null>(null);
+  const [requestImagePreview, setRequestImagePreview] = useState<string | null>(null);
   const [submittingRequest, setSubmittingRequest] = useState(false);
+
+  // Updated Book Cover
+  const BOOK_COVER_URL = "https://cdn.phototourl.com/uploads/2026-01-16-3c469bae-6e25-4d7a-a332-fdd7e876d267.jpg";
 
   useEffect(() => {
     checkUsage();
@@ -43,14 +41,15 @@ export default function Tools() {
     const today = new Date().toISOString().split('T')[0];
     const key = `enhancer_usage_${today}`;
     const used = parseInt(localStorage.getItem(key) || '0');
-    const dailyLimit = isPro ? 10 : 5; 
+    // Pro: 5 daily trials. Free: 2 daily trials (approx 60/month, simpler than tracking monthly)
+    const dailyLimit = isPro ? 5 : 2; 
     setEnhancerTrials(Math.max(0, dailyLimit - used));
   };
 
   const handleEnhance = async () => {
     if (!messyPrompt.trim()) return;
     if (enhancerTrials <= 0) {
-        toast.error(isPro ? "Daily limit reached." : "Free trial limit reached. Upgrade for more.");
+        toast.error(isPro ? "Daily limit reached (5/5)." : "Free trial limit reached. Upgrade for more.");
         return;
     }
 
@@ -79,27 +78,11 @@ export default function Tools() {
     toast.success("Copied!");
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-        const f = e.target.files[0];
-        setFile(f);
-        setPreview(URL.createObjectURL(f));
-        setAnalysisResult(null);
-    }
-  };
-
-  const handleAnalyzeImage = async () => {
-    if (!file) return;
-    setAnalyzing(true);
-    try {
-        const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1024, useWebWorker: true };
-        const compressed = await imageCompression(file, options);
-        const result = await generateJsonPrompt(compressed, false);
-        setAnalysisResult(result);
-    } catch (e: any) {
-        toast.error(e.message);
-    } finally {
-        setAnalyzing(false);
+  const handleRequestImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setRequestImage(file);
+      setRequestImagePreview(URL.createObjectURL(file));
     }
   };
 
@@ -111,14 +94,27 @@ export default function Tools() {
     }
     setSubmittingRequest(true);
     try {
+        let imageUrl = null;
+        if (requestImage) {
+            const options = { maxSizeMB: 0.05, maxWidthOrHeight: 800, useWebWorker: true }; // < 50KB compression
+            const compressed = await imageCompression(requestImage, options);
+            const fileName = `requests/${Date.now()}_${Math.random().toString(36).substring(7)}`;
+            await supabase.storage.from('prompt-images').upload(fileName, compressed);
+            const { data } = supabase.storage.from('prompt-images').getPublicUrl(fileName);
+            imageUrl = data.publicUrl;
+        }
+
         const { error } = await supabase.from('prompt_requests').insert({
             email: requestEmail,
             request_details: requestText,
-            user_id: user?.id
+            user_id: user?.id,
+            reference_image: imageUrl
         });
         if (error) throw error;
         toast.success("Request sent!");
         setRequestText('');
+        setRequestImage(null);
+        setRequestImagePreview(null);
     } catch (e: any) {
         toast.error(e.message);
     } finally {
@@ -142,7 +138,6 @@ export default function Tools() {
         <div className="flex flex-wrap justify-center gap-2 mb-8">
             {[
                 { id: 'enhancer', label: 'Prompt Enhancer', icon: Sparkles },
-                { id: 'image-analysis', label: 'Image to Prompt', icon: ImageIcon },
                 { id: 'custom', label: 'Custom Request', icon: MessageSquare },
                 { id: 'guide', label: 'Engineering Guide', icon: BookOpen },
             ].map(tab => (
@@ -203,54 +198,19 @@ export default function Tools() {
                 </div>
             )}
 
-            {/* IMAGE ANALYSIS TAB */}
-            {activeTab === 'image-analysis' && (
-                <div className="grid lg:grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                        <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl h-64 flex flex-col items-center justify-center relative bg-gray-50 dark:bg-black hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors">
-                            {preview ? (
-                                <img src={preview} alt="Preview" className="h-full object-contain" />
-                            ) : (
-                                <div className="text-center text-gray-400">
-                                    <ImageIcon className="w-10 h-10 mx-auto mb-2" />
-                                    <p>Upload Image</p>
-                                </div>
-                            )}
-                            <input type="file" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" />
-                        </div>
-                        <button 
-                            onClick={handleAnalyzeImage}
-                            disabled={analyzing || !file}
-                            className="w-full py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                            {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Generate JSON Prompt'}
-                        </button>
-                    </div>
-                    <div className="bg-gray-900 rounded-2xl p-4 overflow-auto h-[500px] text-xs font-mono text-green-400 border border-gray-800">
-                        {analysisResult ? JSON.stringify(analysisResult, null, 2) : '// JSON Output will appear here'}
-                    </div>
-                </div>
-            )}
-
-            {/* CUSTOM REQUEST TAB - LANDING PAGE */}
+            {/* CUSTOM REQUEST TAB */}
             {activeTab === 'custom' && (
                 <div className="max-w-2xl mx-auto text-center">
                     {!isPro ? (
                         <div className="py-12">
-                            <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-amber-600">
+                            <div className="w-20 h-20 bg-black dark:bg-white rounded-full flex items-center justify-center mx-auto mb-6 text-white dark:text-black">
                                 <MessageSquare className="w-10 h-10" />
                             </div>
                             <h3 className="text-3xl font-black mb-4 text-slate-900 dark:text-white">Custom Prompt Requests</h3>
                             <p className="mb-8 text-slate-500 text-lg">
                                 Can't find what you need? Our team of expert prompt engineers will craft a custom prompt just for you.
                             </p>
-                            <div className="grid grid-cols-2 gap-4 mb-8 text-left max-w-md mx-auto">
-                                <div className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Tailored to your needs</div>
-                                <div className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Delivered via email</div>
-                                <div className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Expertly crafted</div>
-                                <div className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Unlimited requests</div>
-                            </div>
-                            <Link to="/pricing" className="inline-flex items-center gap-2 px-8 py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-lg transition-all shadow-lg">
+                            <Link to="/pricing" className="inline-flex items-center gap-2 px-8 py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold text-lg transition-all shadow-lg">
                                 Unlock with Pro <Lock className="w-5 h-5" />
                             </Link>
                         </div>
@@ -264,6 +224,39 @@ export default function Tools() {
                                 className="w-full p-4 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-black dark:focus:ring-white"
                                 placeholder="Describe exactly what you need..."
                             />
+                            
+                            {/* Image Upload */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                    Reference Image (Optional)
+                                </label>
+                                <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-black dark:hover:border-white transition-colors bg-gray-50 dark:bg-black group">
+                                    {requestImagePreview ? (
+                                        <>
+                                            <img src={requestImagePreview} alt="Reference" className="w-full h-full object-cover" />
+                                            <button 
+                                                type="button"
+                                                onClick={() => { setRequestImage(null); setRequestImagePreview(null); }}
+                                                className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <div className="w-4 h-4 flex items-center justify-center font-bold">×</div>
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
+                                            <Sparkles className="w-8 h-8 mb-2" />
+                                            <span className="text-xs font-bold">Upload Reference</span>
+                                        </div>
+                                    )}
+                                    <input 
+                                        type="file" 
+                                        accept="image/*"
+                                        onChange={handleRequestImageChange}
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                    />
+                                </div>
+                            </div>
+
                             <button disabled={submittingRequest} className="w-full py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90 transition-opacity">
                                 {submittingRequest ? 'Sending...' : 'Send Request'}
                             </button>
@@ -272,18 +265,18 @@ export default function Tools() {
                 </div>
             )}
 
-            {/* GUIDE TAB - LANDING PAGE */}
+            {/* GUIDE TAB */}
             {activeTab === 'guide' && (
                 <div className="flex flex-col md:flex-row items-center gap-12 py-8">
                     <div className="w-full md:w-1/3">
                         <img 
-                            src="https://cdn.phototourl.com/uploads/2026-01-16-28de4ef2-0a2d-4387-af7b-320328577ddc.jpg" 
+                            src={BOOK_COVER_URL} 
                             alt="Guide Cover" 
                             className="w-full rounded-xl shadow-2xl transform rotate-3 hover:rotate-0 transition-transform duration-500" 
                         />
                     </div>
                     <div className="w-full md:w-2/3 text-left">
-                        <h2 className="text-3xl font-black mb-4 text-slate-900 dark:text-white">The Prompt Engineering Bible</h2>
+                        <h2 className="text-3xl font-black mb-4 text-slate-900 dark:text-white">The Prompt Engineering Guide</h2>
                         <p className="mb-6 text-slate-600 dark:text-slate-400 text-lg leading-relaxed">
                             Master the art of prompting with our comprehensive guide. Learn the frameworks used by experts to control AI outputs with precision.
                         </p>
@@ -300,7 +293,7 @@ export default function Tools() {
                                 href="https://drive.google.com/file/d/1TFTCnJmeSH_ZoJNC3wbFdz_PnPcpKxeD/view?usp=sharing" 
                                 target="_blank" 
                                 rel="noreferrer"
-                                className="px-8 py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 inline-flex items-center gap-2 shadow-lg shadow-blue-500/20"
+                                className="px-8 py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90 inline-flex items-center gap-2 shadow-lg"
                             >
                                 <BookOpen className="w-5 h-5" /> Access Guide
                             </a>

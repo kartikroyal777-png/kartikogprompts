@@ -110,7 +110,7 @@ export default function Pricing() {
             
             <ul className="space-y-4 mb-8 text-white dark:text-black">
               <li className="flex items-center gap-3"><Check className="w-5 h-5 text-amber-400" /> <strong>Unlock ALL Prompts Forever</strong></li>
-              <li className="flex items-center gap-3"><Check className="w-5 h-5 text-amber-400" /> 10 Daily Enhancer Trials</li>
+              <li className="flex items-center gap-3"><Check className="w-5 h-5 text-amber-400" /> 5 daily prompt enhancer trials</li>
               <li className="flex items-center gap-3"><Check className="w-5 h-5 text-amber-400" /> Unlimited Custom Requests</li>
               <li className="flex items-center gap-3"><Check className="w-5 h-5 text-amber-400" /> Prompt Engineering Guide Book</li>
               <li className="flex items-center gap-3"><Check className="w-5 h-5 text-amber-400" /> No Ads & Lifetime Updates</li>
@@ -144,18 +144,18 @@ export default function Pricing() {
               <p className="text-xs text-slate-500 dark:text-slate-400">Enter code to unlock Pro instantly.</p>
             </div>
           </div>
-          <form onSubmit={handleRedeem} className="flex gap-2">
+          <form onSubmit={handleRedeem} className="flex flex-col sm:flex-row gap-3 sm:gap-2">
             <input
               type="text"
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value)}
               placeholder="Enter code..."
-              className="flex-1 px-4 py-2 bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-black dark:focus:ring-white outline-none"
+              className="flex-1 px-4 py-3 sm:py-2 bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-black dark:focus:ring-white outline-none w-full"
             />
             <button
               type="submit"
               disabled={loading || !couponCode.trim()}
-              className="px-6 py-2 bg-black dark:bg-white hover:opacity-80 text-white dark:text-black font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-3 sm:py-2 bg-black dark:bg-white hover:opacity-80 text-white dark:text-black font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 w-full sm:w-auto whitespace-nowrap"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Redeem'}
             </button>

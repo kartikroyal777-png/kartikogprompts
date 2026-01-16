@@ -9,9 +9,9 @@ interface WelcomeFlowProps {
 const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
   const [step, setStep] = useState<'splash' | 'onboarding'>('splash');
   const [currentSlide, setCurrentSlide] = useState(0);
+  const LOGO_URL = "https://cdn.phototourl.com/uploads/2026-01-16-b1550510-f87e-4751-b08e-9d4421d7a041.jpg";
 
   useEffect(() => {
-    // Explicitly typed timer to avoid any ambiguity
     const timer = setTimeout(() => {
       const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding_v3');
       if (hasSeenOnboarding) {
@@ -38,22 +38,22 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
       icon: Sparkles,
       title: "Ultimate Prompt Library",
       desc: "Unlock the full potential of AI with our massive collection of curated prompts.",
-      color: "text-sky-500",
-      bg: "bg-sky-500/10"
+      color: "text-black dark:text-white",
+      bg: "bg-gray-100 dark:bg-gray-800"
     },
     {
       icon: Zap,
       title: "Super Prompts",
       desc: "Specialized, high-impact prompts for Finance, SEO, Business, and more.",
-      color: "text-amber-500",
-      bg: "bg-amber-500/10"
+      color: "text-black dark:text-white",
+      bg: "bg-gray-100 dark:bg-gray-800"
     },
     {
       icon: Wrench,
       title: "Prompt Enhancer",
       desc: "Turn messy thoughts into perfect, engineered prompts with our AI Architect.",
-      color: "text-purple-500",
-      bg: "bg-purple-500/10"
+      color: "text-black dark:text-white",
+      bg: "bg-gray-100 dark:bg-gray-800"
     }
   ];
 
@@ -72,12 +72,12 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
               rotate: [0, 180, 360] 
             }}
             transition={{ duration: 2, ease: "easeInOut", repeat: Infinity }}
-            className="w-20 h-20 rounded-3xl bg-black dark:bg-white flex items-center justify-center shadow-2xl"
+            className="w-20 h-20 rounded-2xl overflow-hidden shadow-2xl"
           >
             <img 
-              src="https://ik.imagekit.io/7iiagrttq/Untitled%20design%20(2).png" 
+              src={LOGO_URL} 
               alt="Logo" 
-              className="w-10 h-10 object-contain invert dark:invert-0" 
+              className="w-full h-full object-cover" 
             />
           </motion.div>
           <motion.div 

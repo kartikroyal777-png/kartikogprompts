@@ -91,11 +91,25 @@ const UploadPage = () => {
             const { data: catData } = await supabase.from('super_prompt_categories').select('id').eq('name', selectedCategories[0]).single();
             if (!catData) throw new Error("Invalid Category");
 
-            // Upload images
+            // Upload images with STRICT compression (< 50KB)
             const imageUrls: string[] = [];
+            const compressionOptions = {
+                maxSizeMB: 0.05, // 50KB
+                maxWidthOrHeight: 800,
+                useWebWorker: true,
+                fileType: 'image/jpeg'
+            };
+
             for (const file of files) {
+                let uploadFile = file;
+                try {
+                    uploadFile = await imageCompression(file, compressionOptions);
+                } catch (cErr) {
+                    console.warn("Compression failed, using original", cErr);
+                }
+
                 const fileName = `super/${Date.now()}_${file.name}`;
-                await supabase.storage.from('prompt-images').upload(fileName, file);
+                await supabase.storage.from('prompt-images').upload(fileName, uploadFile);
                 const { data } = supabase.storage.from('prompt-images').getPublicUrl(fileName);
                 imageUrls.push(data.publicUrl);
             }
@@ -154,8 +168,6 @@ const UploadPage = () => {
                  const file = files[i];
                  const fileName = `prompts/${prompt.id}_${i}_${file.name}`;
                  await supabase.storage.from('prompt-images').upload(fileName, file);
-                 // We store the relative path for prompt_images table usually, or full URL
-                 // Using storage path as per existing schema logic
                  await supabase.from('prompt_images').insert({
                      prompt_id: prompt.id,
                      storage_path: fileName,

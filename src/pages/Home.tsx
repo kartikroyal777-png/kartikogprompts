@@ -1,5 +1,5 @@
 import React, { useEffect, useState, Suspense, useMemo, useRef } from 'react';
-import { Search, Sparkles, ArrowRight, Clock, Box, Loader2, ChevronRight, Zap, Lightbulb, Brain, Check, Star, ShieldCheck, Crown } from 'lucide-react';
+import { Search, Sparkles, ArrowRight, Clock, Box, Loader2, ChevronRight, Zap, Lightbulb, Brain, Check, Star, ShieldCheck, Crown, TrendingUp, BarChart, User, ShoppingBag, Percent, GraduationCap, PenTool, Briefcase, Megaphone } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import PromptCard from '../components/PromptCard';
 import { supabase } from '../lib/supabase';
@@ -11,6 +11,20 @@ import { getImageUrl } from '../lib/utils';
 
 // Lazy load threads
 const Threads = React.lazy(() => import('../components/Threads'));
+
+// Icon Mapping for Super Prompts
+const CATEGORY_ICONS: Record<string, any> = {
+  'Finance': TrendingUp,
+  'SEO': BarChart,
+  'Solopreneurs': User,
+  'E-Commerce': ShoppingBag,
+  'Sales': Percent,
+  'Education': GraduationCap,
+  'Productivity': Zap,
+  'Writing': PenTool,
+  'Business': Briefcase,
+  'Marketing': Megaphone
+};
 
 // Reviews Data
 const REVIEWS = [
@@ -160,10 +174,16 @@ export default function Home() {
   async function fetchSuperPrompts() {
       setLoadingSuper(true);
       try {
-          // Optimized: Fetch minimal fields
+          // Join with categories to get name
           const { data } = await supabase
             .from('super_prompts')
-            .select('id, title, what_it_does, category_id')
+            .select(`
+                id, 
+                title, 
+                what_it_does, 
+                category_id,
+                category:super_prompt_categories(name)
+            `)
             .limit(4)
             .order('created_at', { ascending: false });
           setSuperPrompts(data || []);
@@ -270,12 +290,13 @@ export default function Home() {
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
-              <button onClick={handleBecomeCreatorClick} className="bg-white text-black font-bold px-8 py-4 rounded-full text-lg hover:bg-gray-100 transition-all shadow-lg border border-gray-200 flex items-center justify-center gap-2 transform hover:-translate-y-1">
-                <Sparkles className="w-5 h-5" />
+            {/* Buttons - Mobile Fixed Row */}
+            <div className="flex flex-row justify-center gap-3 pt-4">
+              <button onClick={handleBecomeCreatorClick} className="flex-1 sm:flex-none bg-white text-black font-bold px-4 sm:px-8 py-3 sm:py-4 rounded-full text-sm sm:text-lg hover:bg-gray-100 transition-all shadow-lg border border-gray-200 flex items-center justify-center gap-2 transform hover:-translate-y-1">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
                 Become Creator
               </button>
-              <Link to="/prompts" className="bg-white dark:bg-gray-900 text-black dark:text-white font-bold px-8 py-4 rounded-full text-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all border border-gray-200 dark:border-gray-800 flex items-center justify-center gap-2">
+              <Link to="/prompts" className="flex-1 sm:flex-none bg-white dark:bg-gray-900 text-black dark:text-white font-bold px-4 sm:px-8 py-3 sm:py-4 rounded-full text-sm sm:text-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all border border-gray-200 dark:border-gray-800 flex items-center justify-center gap-2">
                 Browse Prompts
               </Link>
             </div>
@@ -323,12 +344,12 @@ export default function Home() {
         )}
       </div>
 
-      {/* Super Prompts */}
+      {/* Super Prompts - Updated Styling */}
       <div className="bg-white dark:bg-black py-16 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
                 <h2 className="text-2xl font-bold text-black dark:text-white flex items-center gap-2">
-                    <Zap className="w-6 h-6 text-amber-500 fill-amber-500" />
+                    <Zap className="w-6 h-6 text-white fill-black dark:fill-white" />
                     Super Prompts
                 </h2>
                 <Link to="/super-prompts" className="text-sm font-bold hover:underline">View All</Link>
@@ -340,45 +361,55 @@ export default function Home() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {superPrompts.map(prompt => (
-                        <Link to="/super-prompts" key={prompt.id} className="bg-gray-50 dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 hover:border-amber-500 dark:hover:border-amber-500 transition-all group">
-                            <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-2 group-hover:text-amber-500 transition-colors">{prompt.title}</h3>
-                            <p className="text-sm text-slate-500 line-clamp-2">{prompt.what_it_does}</p>
-                        </Link>
-                    ))}
+                    {superPrompts.map(prompt => {
+                        const Icon = CATEGORY_ICONS[prompt.category?.name] || Zap;
+                        return (
+                            <Link 
+                                to="/super-prompts" 
+                                key={prompt.id} 
+                                className="bg-gray-50 dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 hover:shadow-[0_0_15px_rgba(255,255,255,0.3)] dark:hover:shadow-[0_0_15px_rgba(255,255,255,0.15)] transition-all group"
+                            >
+                                <div className="mb-3 w-10 h-10 rounded-lg bg-black dark:bg-white flex items-center justify-center text-white dark:text-black">
+                                    <Icon className="w-5 h-5" />
+                                </div>
+                                <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-2 group-hover:text-black dark:group-hover:text-white transition-colors">{prompt.title}</h3>
+                                <p className="text-sm text-slate-500 line-clamp-2">{prompt.what_it_does}</p>
+                            </Link>
+                        );
+                    })}
                 </div>
             )}
         </div>
       </div>
 
-      {/* Pro Plan Benefits */}
-      <div className="bg-black text-white dark:bg-white dark:text-black py-20 overflow-hidden relative">
+      {/* Pro Plan Benefits - Black Theme */}
+      <div className="bg-black text-white py-20 overflow-hidden relative border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 relative z-10">
             <div className="text-center mb-12">
-                <span className="inline-block px-4 py-1 rounded-full bg-amber-500 text-white text-xs font-bold mb-4">LIFETIME DEAL</span>
-                <h2 className="text-4xl md:text-5xl font-black mb-6">Why Go Pro?</h2>
+                <span className="inline-block px-4 py-1 rounded-full border border-white/20 text-white text-xs font-bold mb-4 shadow-[0_0_10px_rgba(255,255,255,0.3)]">LIFETIME DEAL</span>
+                <h2 className="text-4xl md:text-5xl font-black mb-6 text-white">Why Go Pro?</h2>
                 <p className="text-xl opacity-80 max-w-2xl mx-auto">One payment. Forever access. No monthly fees.</p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-8 mb-12">
                 {[
                     { icon: Crown, title: "Unlock Everything", desc: "Access every prompt, template, and guide instantly." },
-                    { icon: Zap, title: "Enhancer Power", desc: "10 Daily trials to turn messy thoughts into gold." },
+                    { icon: Zap, title: "Enhancer Power", desc: "5 daily prompt enhancer trials to turn messy thoughts into gold." },
                     { icon: ShieldCheck, title: "Commercial Use", desc: "Use prompts for client work and products." },
                     { icon: Star, title: "Priority Requests", desc: "Request custom prompts from our team." },
                     { icon: Box, title: "No Ads", desc: "Clean, focused experience without distractions." },
                     { icon: Check, title: "Lifetime Updates", desc: "Get all future prompts for free." }
                 ].map((item, i) => (
-                    <div key={i} className="bg-white/10 dark:bg-black/5 p-6 rounded-2xl backdrop-blur-sm border border-white/10 dark:border-black/10">
-                        <item.icon className="w-8 h-8 mb-4 text-amber-500" />
-                        <h3 className="font-bold text-xl mb-2">{item.title}</h3>
-                        <p className="opacity-70 text-sm">{item.desc}</p>
+                    <div key={i} className="bg-white/5 p-6 rounded-2xl backdrop-blur-sm border border-white/10 hover:border-white/30 transition-colors">
+                        <item.icon className="w-8 h-8 mb-4 text-white" />
+                        <h3 className="font-bold text-xl mb-2 text-white">{item.title}</h3>
+                        <p className="opacity-70 text-sm text-gray-300">{item.desc}</p>
                     </div>
                 ))}
             </div>
 
             <div className="text-center">
-                <Link to="/pricing" className="inline-flex items-center gap-2 bg-white dark:bg-black text-black dark:text-white px-8 py-4 rounded-full font-bold text-lg hover:scale-105 transition-transform">
+                <Link to="/pricing" className="inline-flex items-center gap-2 bg-white text-black px-8 py-4 rounded-full font-bold text-lg hover:scale-105 transition-transform shadow-[0_0_20px_rgba(255,255,255,0.4)]">
                     Get Pro for $10 <ArrowRight className="w-5 h-5" />
                 </Link>
             </div>
@@ -396,7 +427,7 @@ export default function Home() {
                 {[...REVIEWS, ...REVIEWS].map((review, i) => (
                     <div key={i} className="w-80 bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm flex-shrink-0">
                         <div className="flex gap-1 mb-3">
-                            {[1,2,3,4,5].map(s => <Star key={s} className="w-4 h-4 text-amber-500 fill-amber-500" />)}
+                            {[1,2,3,4,5].map(s => <Star key={s} className="w-4 h-4 text-black dark:text-white fill-black dark:fill-white" />)}
                         </div>
                         <p className="text-slate-700 dark:text-slate-300 text-sm mb-4 leading-relaxed">"{review.text}"</p>
                         <div>

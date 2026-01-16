@@ -1,19 +1,21 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Instagram, Send, Sparkles, Shield, Box, Zap, BookOpen } from 'lucide-react';
+import { Instagram, Sparkles, Shield, Box, Zap, BookOpen } from 'lucide-react';
 
 const Footer = () => {
+  const LOGO_URL = "https://cdn.phototourl.com/uploads/2026-01-16-b1550510-f87e-4751-b08e-9d4421d7a041.jpg";
+
   return (
     <footer className="bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 py-12 pb-24 md:pb-12 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
             <Link to="/" className="flex items-center gap-3 group mb-4">
-              <div className="bg-black dark:bg-white p-1.5 rounded-xl shadow-lg border border-white/10 dark:border-black/10">
+              <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm border border-gray-200 dark:border-gray-800">
                 <img 
-                  src="https://ik.imagekit.io/7iiagrttq/Untitled%20design%20(2).png" 
+                  src={LOGO_URL} 
                   alt="OG Prompts" 
-                  className="w-6 h-6 object-contain invert dark:invert-0" 
+                  className="w-full h-full object-cover" 
                 />
               </div>
               <span className="text-xl font-bold text-black dark:text-white">OGPrompts</span>
@@ -23,20 +25,12 @@ const Footer = () => {
             </p>
             <div className="flex gap-4 mt-6">
               <a 
-                href="https://www.instagram.com/kartikkumawat.ai/" 
+                href="https://www.instagram.com/kartik.ogprompts/" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="p-2 bg-gray-100 dark:bg-gray-900 rounded-full hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
               >
                 <Instagram className="w-5 h-5" />
-              </a>
-              <a 
-                href="https://t.me/kartikogprompts" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="p-2 bg-gray-100 dark:bg-gray-900 rounded-full hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
-              >
-                <Send className="w-5 h-5" />
               </a>
             </div>
           </div>

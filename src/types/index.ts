@@ -70,6 +70,7 @@ export interface SuperPrompt {
   example_output_images: string[];
   is_premium: boolean;
   created_at: string;
+  likes_count: number;
   is_favorite?: boolean;
 }
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Settings, LogOut, Wallet, User, Heart, Image as ImageIcon, DollarSign, RefreshCw, Users, CreditCard, Sparkles, Camera, Loader2, Star, Link as LinkIcon, Sun, Moon } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Settings, LogOut, Wallet, User, Heart, Image as ImageIcon, DollarSign, RefreshCw, CreditCard, Sparkles, Camera, Loader2, Star, Link as LinkIcon, Sun, Moon, Upload, Crown, Copy, Check } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import PayoutModal from '../components/PayoutModal';
@@ -52,6 +52,7 @@ const compressImage = async (file: File): Promise<File> => {
 const Profile = () => {
   const { user, profile, wallet, refreshProfile, signOut, isPro } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'prompts' | 'favorites' | 'settings'>('prompts');
   const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
   const [converting, setConverting] = useState(false);
@@ -74,6 +75,9 @@ const Profile = () => {
   const [displayName, setDisplayName] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  
+  // Affiliate
+  const [affiliateCopied, setAffiliateCopied] = useState(false);
 
   const isAdmin = user?.email === 'kartikroyal777@gmail.com';
 
@@ -281,9 +285,12 @@ const Profile = () => {
     }
   };
 
+  const affiliateLink = `${window.location.origin}/pricing?ref=${user.id}`;
+
   const copyAffiliateLink = () => {
-      const link = `${window.location.origin}/pricing?ref=${user.id}`;
-      navigator.clipboard.writeText(link);
+      navigator.clipboard.writeText(affiliateLink);
+      setAffiliateCopied(true);
+      setTimeout(() => setAffiliateCopied(false), 2000);
       toast.success("Affiliate Link Copied!");
   };
 
@@ -333,7 +340,7 @@ const Profile = () => {
               </label>
             </div>
             
-            <div className="flex-1 text-center md:text-left space-y-4">
+            <div className="flex-1 text-center md:text-left space-y-4 w-full">
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1 flex items-center justify-center md:justify-start gap-2">
                   {isAdmin ? 'Admin' : (profile.full_name || 'User')}
@@ -343,19 +350,31 @@ const Profile = () => {
                 <p className="text-slate-500 dark:text-slate-400 font-medium">{user.email}</p>
               </div>
               
-              {/* Wallet Stats */}
-              <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                {/* Affiliate Link Button - Black/White */}
-                {profile.creator_badge && (
-                    <button 
-                        onClick={copyAffiliateLink}
-                        className="bg-black dark:bg-white px-5 py-3 rounded-xl border border-gray-200 dark:border-gray-800 text-white dark:text-black hover:opacity-90 transition-colors flex items-center gap-2"
-                    >
-                        <LinkIcon className="w-4 h-4" />
-                        <span className="font-bold text-sm">Copy Affiliate Link</span>
-                    </button>
-                )}
+              {/* Action Buttons Row */}
+              <div className="flex flex-wrap justify-center md:justify-start gap-3">
+                  {/* Upload Button (For Everyone) */}
+                  <Link 
+                    to="/upload" 
+                    className="flex items-center gap-2 px-5 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90 transition-all shadow-md"
+                  >
+                      <Upload className="w-4 h-4" />
+                      Upload Prompt
+                  </Link>
 
+                  {/* Upgrade Button (Non-Pro) */}
+                  {!isPro && (
+                      <Link 
+                        to="/pricing" 
+                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold hover:brightness-110 transition-all shadow-md"
+                      >
+                          <Crown className="w-4 h-4" />
+                          Upgrade to Pro
+                      </Link>
+                  )}
+              </div>
+
+              {/* Wallet Stats */}
+              <div className="flex flex-wrap justify-center md:justify-start gap-4 pt-2">
                 {showCreatorTools && (
                   <>
                     <button 
@@ -404,17 +423,37 @@ const Profile = () => {
             </div>
 
             <div className="flex flex-col gap-3 min-w-[160px]">
-              {!isPro && (
-                  <Link to="/pricing" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg text-center">
-                    Upgrade to Pro
-                  </Link>
-              )}
               <button onClick={handleSignOut} className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-gray-700 px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2">
                 <LogOut className="w-4 h-4" />
                 Sign Out
               </button>
             </div>
           </div>
+          
+          {/* Affiliate Link Section (Full Width) */}
+          {profile.creator_badge && (
+              <div className="mt-8 pt-6 border-t border-slate-200 dark:border-gray-800">
+                  <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <LinkIcon className="w-4 h-4" /> Your Affiliate Link
+                  </h3>
+                  <div className="flex items-center gap-2 bg-white dark:bg-black p-2 rounded-xl border border-slate-200 dark:border-gray-800">
+                      <input 
+                          type="text" 
+                          readOnly 
+                          value={affiliateLink}
+                          className="flex-1 bg-transparent px-3 text-sm font-mono text-slate-600 dark:text-slate-300 outline-none truncate"
+                      />
+                      <button 
+                          onClick={copyAffiliateLink}
+                          className="px-4 py-2 bg-slate-100 dark:bg-gray-800 hover:bg-slate-200 dark:hover:bg-gray-700 text-black dark:text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2"
+                      >
+                          {affiliateCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                          {affiliateCopied ? 'Copied' : 'Copy'}
+                      </button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">Share this link. When users upgrade to Pro, you earn 10 credits.</p>
+              </div>
+          )}
         </div>
 
         {/* Tabs */}

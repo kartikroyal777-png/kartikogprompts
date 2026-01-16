@@ -1,6 +1,7 @@
 'use client';
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { gsap } from 'gsap';
+import { useTheme } from '../context/ThemeContext';
 
 const throttle = (func: (...args: any[]) => void, limit: number) => {
   let lastCall = 0;
@@ -48,9 +49,9 @@ function hexToRgb(hex: string) {
 }
 
 const DotGrid: React.FC<DotGridProps> = ({
-  dotSize = 4, // kept small for elegance
-  gap = 25,    // Reduced gap significantly to increase density (more dots)
-  baseColor = '#0ea5e9',
+  dotSize = 4,
+  gap = 25,
+  baseColor: propBaseColor, // Allow override
   activeColor = '#3b82f6',
   proximity = 100,
   speedTrigger = 100,
@@ -62,6 +63,7 @@ const DotGrid: React.FC<DotGridProps> = ({
   className = '',
   style
 }) => {
+  const { theme } = useTheme();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dotsRef = useRef<Dot[]>([]);
@@ -75,6 +77,9 @@ const DotGrid: React.FC<DotGridProps> = ({
     lastX: 0,
     lastY: 0
   });
+
+  // Dynamic base color based on theme
+  const baseColor = propBaseColor || (theme === 'dark' ? '#ffffff' : '#000000');
 
   const baseRgb = useMemo(() => hexToRgb(baseColor), [baseColor]);
   const activeRgb = useMemo(() => hexToRgb(activeColor), [activeColor]);

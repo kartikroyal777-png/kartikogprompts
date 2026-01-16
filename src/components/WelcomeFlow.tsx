@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Box, Zap, ArrowRight, CheckCircle } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
+import { Sparkles, Zap, Wrench, ArrowRight, CheckCircle } from 'lucide-react';
 
 interface WelcomeFlowProps {
   onComplete: () => void;
@@ -10,13 +9,11 @@ interface WelcomeFlowProps {
 const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
   const [step, setStep] = useState<'splash' | 'onboarding'>('splash');
   const [currentSlide, setCurrentSlide] = useState(0);
-  const { theme } = useTheme();
 
   useEffect(() => {
-    // Splash screen timer
+    // Explicitly typed timer to avoid any ambiguity
     const timer = setTimeout(() => {
-      // Check if user has seen onboarding
-      const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+      const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding_v3');
       if (hasSeenOnboarding) {
         onComplete();
       } else {
@@ -31,7 +28,7 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
     if (currentSlide < slides.length - 1) {
       setCurrentSlide(prev => prev + 1);
     } else {
-      localStorage.setItem('hasSeenOnboarding', 'true');
+      localStorage.setItem('hasSeenOnboarding_v3', 'true');
       onComplete();
     }
   };
@@ -39,24 +36,24 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
   const slides = [
     {
       icon: Sparkles,
-      title: "Unlimited AI Prompts",
-      desc: "Access thousands of high-quality prompts for Midjourney, Flux, and more. Totally free.",
+      title: "Ultimate Prompt Library",
+      desc: "Unlock the full potential of AI with our massive collection of curated prompts.",
       color: "text-sky-500",
       bg: "bg-sky-500/10"
     },
     {
-      icon: Box,
-      title: "Product Photography",
-      desc: "Specialized prompts for brands and agencies to create stunning product shots instantly.",
-      color: "text-purple-500",
-      bg: "bg-purple-500/10"
-    },
-    {
       icon: Zap,
-      title: "Image to JSON",
-      desc: "Upload any image and get a precise, technical JSON prompt to recreate the style.",
+      title: "Super Prompts",
+      desc: "Specialized, high-impact prompts for Finance, SEO, Business, and more.",
       color: "text-amber-500",
       bg: "bg-amber-500/10"
+    },
+    {
+      icon: Wrench,
+      title: "Prompt Enhancer",
+      desc: "Turn messy thoughts into perfect, engineered prompts with our AI Architect.",
+      color: "text-purple-500",
+      bg: "bg-purple-500/10"
     }
   ];
 
@@ -71,16 +68,16 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
         <div className="flex flex-col items-center justify-center gap-8">
           <motion.div
             animate={{ 
-              scale: [1, 1.2, 1],
+              scale: [1, 1.1, 1],
               rotate: [0, 180, 360] 
             }}
             transition={{ duration: 2, ease: "easeInOut", repeat: Infinity }}
-            className="w-24 h-24 rounded-3xl bg-black dark:bg-white flex items-center justify-center shadow-2xl"
+            className="w-20 h-20 rounded-3xl bg-black dark:bg-white flex items-center justify-center shadow-2xl"
           >
             <img 
               src="https://ik.imagekit.io/7iiagrttq/Untitled%20design%20(2).png" 
               alt="Logo" 
-              className="w-12 h-12 object-contain invert dark:invert-0" 
+              className="w-10 h-10 object-contain invert dark:invert-0" 
             />
           </motion.div>
           <motion.div 
@@ -90,6 +87,7 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
             className="text-center"
           >
             <h1 className="text-3xl font-black text-black dark:text-white tracking-tight">OG Prompts</h1>
+            <p className="text-gray-500 mt-2 font-medium">Unlock the full potential of AI Tools</p>
           </motion.div>
         </div>
       </motion.div>
@@ -103,7 +101,6 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] bg-white dark:bg-black flex flex-col"
     >
-      {/* Background Pattern */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 relative z-10">

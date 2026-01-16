@@ -11,6 +11,7 @@ interface AuthContextType {
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  isPro: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +22,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Check for affiliate ref in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      localStorage.setItem('affiliate_ref', ref);
+    }
+  }, []);
 
   const fetchProfileAndWallet = async (userId: string) => {
     try {
@@ -81,8 +91,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) await fetchProfileAndWallet(user.id);
   };
 
+  const isPro = profile?.plan_type === 'pro' || profile?.role === 'admin';
+
   return (
-    <AuthContext.Provider value={{ user, session, profile, wallet, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, profile, wallet, loading, signOut, refreshProfile, isPro }}>
       {children}
     </AuthContext.Provider>
   );

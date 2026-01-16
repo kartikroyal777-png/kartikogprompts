@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Lock, Search, Trash2, Plus, Box, Image as ImageIcon, MessageSquare, ExternalLink, Check, X, Filter, Mail, Calendar, Clock, Send } from 'lucide-react';
+import { Shield, Lock, Search, Trash2, Plus, Box, Image as ImageIcon, MessageSquare, ExternalLink, Check, X, Filter, Mail, Clock, Send, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Prompt } from '../types';
 import { getImageUrl } from '../lib/utils';
 import toast from 'react-hot-toast';
 
@@ -10,13 +9,13 @@ const ADMIN_PASSWORD = 'KARTIK#1234567';
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'prompts' | 'product_prompts' | 'categories' | 'requests'>('prompts');
+  const [activeTab, setActiveTab] = useState<'prompts' | 'product_prompts' | 'super_prompts' | 'categories' | 'requests'>('prompts');
   
   // Data States
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [newItemName, setNewItemName] = useState('');
-  const [categoryType, setCategoryType] = useState<'standard' | 'product'>('standard');
+  const [categoryType, setCategoryType] = useState<'standard' | 'product' | 'super'>('standard');
   const [searchQuery, setSearchQuery] = useState('');
   const [requestFilter, setRequestFilter] = useState<'all' | 'pending' | 'completed' | 'rejected'>('all');
   
@@ -49,16 +48,26 @@ export default function Admin() {
     setLoading(true);
     try {
       if (activeTab === 'categories') {
-        const { data } = await supabase.from('categories').select('*').order('type').order('name');
-        setItems(data || []);
+        // Fetch both standard and super categories
+        const { data: stdCats } = await supabase.from('categories').select('*');
+        const { data: supCats } = await supabase.from('super_prompt_categories').select('*');
+        
+        // Normalize
+        const formattedStd = (stdCats || []).map(c => ({ ...c, type: c.type || 'standard' }));
+        const formattedSup = (supCats || []).map(c => ({ ...c, type: 'super' }));
+        
+        setItems([...formattedStd, ...formattedSup]);
+        
       } else if (activeTab === 'requests') {
         const { data } = await supabase
             .from('prompt_requests')
             .select('*')
             .order('created_at', { ascending: false });
         setItems(data || []);
-        // Mark badge as read essentially, but we keep the count real
         fetchStats();
+      } else if (activeTab === 'super_prompts') {
+        const { data } = await supabase.from('super_prompts').select('*').order('created_at', { ascending: false });
+        setItems(data || []);
       } else {
         const type = activeTab === 'product_prompts' ? 'product' : 'standard';
         let query = supabase.from('prompts').select('*').eq('prompt_type', type).order('created_at', { ascending: false });
@@ -91,8 +100,15 @@ export default function Admin() {
     if (!confirm("Delete this item?")) return;
     
     let table = 'prompts';
-    if (activeTab === 'categories') table = 'categories';
+    if (activeTab === 'categories') table = 'categories'; // Simplified, might need check for super
     if (activeTab === 'requests') table = 'prompt_requests';
+    if (activeTab === 'super_prompts') table = 'super_prompts';
+
+    // Special handling for categories deletion
+    if (activeTab === 'categories') {
+        const item = items.find(i => i.id === id);
+        if (item?.type === 'super') table = 'super_prompt_categories';
+    }
 
     const { error } = await supabase.from(table).delete().eq('id', id);
     if (error) {
@@ -110,7 +126,6 @@ export default function Admin() {
           toast.error("Update failed");
       } else {
           toast.success(`Request marked as ${status}`);
-          // Update local state immediately for better UX
           setItems(prev => prev.map(item => item.id === id ? { ...item, status } : item));
           fetchStats();
       }
@@ -120,9 +135,17 @@ export default function Admin() {
     e.preventDefault();
     if (!newItemName) return;
 
-    const { error } = await supabase.from('categories').insert({ name: newItemName, type: categoryType });
+    let table = 'categories';
+    let payload: any = { name: newItemName, type: categoryType };
+
+    if (categoryType === 'super') {
+        table = 'super_prompt_categories';
+        payload = { name: newItemName, description: 'New Category', sort_order: 99 };
+    }
+
+    const { error } = await supabase.from(table).insert(payload);
     if (error) {
-        toast.error("Failed to add category");
+        toast.error("Failed to add category: " + error.message);
     } else {
         toast.success("Category added");
         setNewItemName('');
@@ -190,8 +213,9 @@ export default function Admin() {
         {/* Navigation Tabs */}
         <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
             {[
-                { id: 'prompts', label: 'Standard Prompts', icon: ImageIcon },
-                { id: 'product_prompts', label: 'Product Prompts', icon: Box },
+                { id: 'prompts', label: 'Standard', icon: ImageIcon },
+                { id: 'product_prompts', label: 'Product', icon: Box },
+                { id: 'super_prompts', label: 'Super', icon: Zap },
                 { id: 'requests', label: 'Requests', icon: MessageSquare, count: pendingCount },
                 { id: 'categories', label: 'Categories', icon: Filter },
             ].map((tab) => (
@@ -277,6 +301,7 @@ export default function Admin() {
                                     >
                                         <option value="standard">Standard</option>
                                         <option value="product">Product</option>
+                                        <option value="super">Super</option>
                                     </select>
                                     <button className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90">
                                         <Plus className="w-5 h-5" />
@@ -377,14 +402,15 @@ export default function Admin() {
                         </div>
                     )}
 
-                    {/* Prompts View */}
-                    {(activeTab === 'prompts' || activeTab === 'product_prompts') && (
+                    {/* Prompts View (Standard, Product, Super) */}
+                    {(activeTab === 'prompts' || activeTab === 'product_prompts' || activeTab === 'super_prompts') && (
                         <div className="space-y-2">
                             {filteredItems.map(item => (
                                 <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-black/30 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-all">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-lg bg-gray-200 dark:bg-gray-800 overflow-hidden flex-shrink-0">
                                             {item.image && <img src={getImageUrl(item.image)} alt="" className="w-full h-full object-cover" />}
+                                            {!item.image && activeTab === 'super_prompts' && <div className="flex items-center justify-center h-full"><Zap className="w-6 h-6 text-gray-400" /></div>}
                                         </div>
                                         <div>
                                             <div className="font-bold text-gray-900 dark:text-white">{item.title}</div>

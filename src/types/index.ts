@@ -44,11 +44,33 @@ export interface Prompt {
   created_at?: string;
   likes: number;
   is_liked?: boolean;
+  is_favorite?: boolean;
   is_paid?: boolean;
   is_bundle?: boolean;
   monetization_url?: string;
   instagram_handle?: string;
-  prompt_type: 'standard' | 'product'; // Added
+  prompt_type: 'standard' | 'product';
+}
+
+export interface SuperPromptCategory {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  sort_order: number;
+}
+
+export interface SuperPrompt {
+  id: string;
+  category_id: string;
+  title: string;
+  what_it_does: string;
+  prompt_content: string;
+  how_to_use: string;
+  example_output_images: string[];
+  is_premium: boolean;
+  created_at: string;
+  is_favorite?: boolean;
 }
 
 export interface PromptContent {
@@ -70,14 +92,6 @@ export interface Wallet {
   updated_at: string;
 }
 
-export interface Transaction {
-  id: string;
-  amount: number;
-  type: 'credit' | 'debit';
-  description: string;
-  created_at: string;
-}
-
 export interface UserProfile {
   id: string;
   full_name?: string;
@@ -87,6 +101,9 @@ export interface UserProfile {
   creator_badge?: boolean;
   usd_balance?: number;
   ebook_access?: boolean;
+  plan_type?: 'free' | 'pro';
+  referred_by?: string;
+  affiliate_earnings_credits?: number;
 }
 
 export type Category = 'All' | 'Couple' | 'Kids' | 'Men' | 'Women' | 'Animals' | 'Landscape';

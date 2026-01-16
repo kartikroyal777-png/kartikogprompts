@@ -13,11 +13,12 @@ import Admin from './pages/Admin';
 import { About as AboutPage, Privacy as PrivacyPage, Terms as TermsPage } from './pages/Legal';
 import InstructionsPage from './pages/Instructions';
 import Profile from './pages/Profile';
-import BuyCredits from './pages/BuyCredits';
+import Pricing from './pages/Pricing';
 import BecomeCreator from './pages/BecomeCreator';
 import CreatorProfile from './pages/CreatorProfile';
 import ProductPrompts from './pages/ProductPrompts';
-import ImageToJson from './pages/ImageToJson';
+import Tools from './pages/Tools';
+import SuperPrompts from './pages/SuperPrompts';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ScrollToTop from './components/ScrollToTop';
@@ -26,9 +27,7 @@ import WelcomeFlow from './components/WelcomeFlow';
 function App() {
   const [showWelcome, setShowWelcome] = useState(true);
 
-  // Check if we should show the welcome flow on mount
   useEffect(() => {
-    // If it's a direct link to a specific page (e.g. prompt detail), skip onboarding
     if (window.location.pathname !== '/') {
       setShowWelcome(false);
     }
@@ -42,17 +41,7 @@ function App() {
         ) : (
           <Router>
             <ScrollToTop />
-            <Toaster 
-              position="top-center" 
-              reverseOrder={false}
-              toastOptions={{
-                style: {
-                  background: '#333',
-                  color: '#fff',
-                  borderRadius: '12px',
-                },
-              }} 
-            />
+            <Toaster position="top-center" toastOptions={{ style: { background: '#333', color: '#fff', borderRadius: '12px' } }} />
             <div className="min-h-screen bg-white dark:bg-black transition-colors duration-300 flex flex-col">
               <Navbar />
               <div className="flex-grow">
@@ -60,7 +49,8 @@ function App() {
                   <Route path="/" element={<Home />} />
                   <Route path="/prompts" element={<Prompts />} />
                   <Route path="/product-prompts" element={<ProductPrompts />} />
-                  <Route path="/image-to-json" element={<ImageToJson />} />
+                  <Route path="/super-prompts" element={<SuperPrompts />} />
+                  <Route path="/tools" element={<Tools />} />
                   <Route path="/prompt/:id" element={<PromptDetail />} />
                   <Route path="/upload" element={<UploadPage />} />
                   <Route path="/auth" element={<Auth />} />
@@ -70,7 +60,7 @@ function App() {
                   <Route path="/terms" element={<TermsPage />} />
                   <Route path="/instructions" element={<InstructionsPage />} />
                   <Route path="/profile" element={<Profile />} />
-                  <Route path="/buy-credits" element={<BuyCredits />} />
+                  <Route path="/pricing" element={<Pricing />} />
                   <Route path="/become-creator" element={<BecomeCreator />} />
                   <Route path="/creator/:id" element={<CreatorProfile />} />
                 </Routes>

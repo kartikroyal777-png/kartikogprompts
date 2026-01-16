@@ -7,7 +7,7 @@ export default function EbookPopup() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // Check if user has seen the popup (Updated key to force reset for testing)
+    // Check if user has seen the popup
     const hasSeenPopup = localStorage.getItem('hasSeenEbookPopup_v2');
     
     if (!hasSeenPopup) {

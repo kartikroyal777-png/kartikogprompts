@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Image as ImageIcon, X, Loader2, Coins, Layers, Check, Box, Lock } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, Loader2, Coins, Layers, Check, Box, Lock, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import imageCompression from 'browser-image-compression';
 import { useAuth } from '../context/AuthContext';
@@ -12,12 +12,17 @@ const UploadPage = () => {
   const [loading, setLoading] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [promptTexts, setPromptTexts] = useState<string[]>(['']);
-  const [promptType, setPromptType] = useState<'standard' | 'product'>('standard');
+  const [promptType, setPromptType] = useState<'standard' | 'product' | 'super'>('standard');
   const [isDragging, setIsDragging] = useState(false);
+
+  // Super Prompt specific fields
+  const [superData, setSuperData] = useState({
+    what_it_does: '',
+    how_to_use: ''
+  });
 
   const [formData, setFormData] = useState({
     title: '',
@@ -27,7 +32,6 @@ const UploadPage = () => {
     credit_name: '',
     instagram_handle: '',
     is_paid: false,
-    price_credits: 5,
     is_bundle: false,
     instructions: ''
   });
@@ -41,26 +45,15 @@ const UploadPage = () => {
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('name')
-        .eq('type', promptType)
-        .order('name');
-
-      if (error) throw error;
-      if (data && data.length > 0) {
-        setCategories(data.map(c => c.name));
-        // Reset selection when switching types
-        setSelectedCategories([]);
+      if (promptType === 'super') {
+          const { data } = await supabase.from('super_prompt_categories').select('name, id');
+          if (data) setCategories(data.map(c => c.name)); 
       } else {
-        const defaults = promptType === 'standard' 
-            ? ['Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape']
-            : ['Cosmetics', 'Tech', 'Fashion', 'Food', 'Furniture'];
-        setCategories(defaults);
-        setSelectedCategories([]);
+          const { data } = await supabase.from('categories').select('name').eq('type', promptType);
+          if (data) setCategories(data.map(c => c.name));
       }
     } catch (err) {
-      console.error("Error fetching categories", err);
+      console.error(err);
     }
   };
 
@@ -73,341 +66,220 @@ const UploadPage = () => {
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const droppedFiles = Array.from(e.dataTransfer.files);
-      // Filter for images only
-      const imageFiles = droppedFiles.filter(file => file.type.startsWith('image/'));
-      
-      if (imageFiles.length > 0) {
-        const newPreviews = imageFiles.map(file => URL.createObjectURL(file));
-        setFiles(prev => [...prev, ...imageFiles]);
-        setPreviews(prev => [...prev, ...newPreviews]);
-      }
-    }
-  };
-  
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
-    setPreviews(prev => {
-      const newPreviews = [...prev];
-      URL.revokeObjectURL(newPreviews[index]);
-      return newPreviews.filter((_, i) => i !== index);
-    });
+    setPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const toggleCategory = (category: string) => {
-    setSelectedCategories(prev => {
-      if (prev.includes(category)) {
-        return prev.filter(c => c !== category);
-      } else {
-        return [...prev, category];
-      }
-    });
+    // For Super Prompts, allow only one category for simplicity now
+    if (promptType === 'super') {
+        setSelectedCategories([category]);
+        return;
+    }
+    setSelectedCategories(prev => prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (files.length === 0) return alert("Select at least one image.");
-    if (selectedCategories.length === 0) return alert("Select at least one category.");
-    
     setLoading(true);
-    setUploadProgress(0);
 
     try {
-      // 1. Create Prompt Record
-      const { data: prompt, error: promptError } = await supabase
+        // Handle Super Prompt Upload
+        if (promptType === 'super') {
+            // Logic to get category ID
+            const { data: catData } = await supabase.from('super_prompt_categories').select('id').eq('name', selectedCategories[0]).single();
+            if (!catData) throw new Error("Invalid Category");
+
+            // Upload images
+            const imageUrls: string[] = [];
+            for (const file of files) {
+                const fileName = `super/${Date.now()}_${file.name}`;
+                await supabase.storage.from('prompt-images').upload(fileName, file);
+                const { data } = supabase.storage.from('prompt-images').getPublicUrl(fileName);
+                imageUrls.push(data.publicUrl);
+            }
+
+            await supabase.from('super_prompts').insert({
+                title: formData.title,
+                category_id: catData.id,
+                what_it_does: superData.what_it_does,
+                prompt_content: promptTexts[0],
+                how_to_use: superData.how_to_use,
+                example_output_images: imageUrls,
+                created_by: user?.id,
+                is_premium: formData.is_paid
+            });
+            navigate('/super-prompts');
+            return;
+        }
+
+        // Standard/Product Logic
+        // Upload main image
+        let mainImageUrl = null;
+        if (files.length > 0) {
+            const file = files[0];
+            const fileName = `prompts/${Date.now()}_${file.name}`;
+            await supabase.storage.from('prompt-images').upload(fileName, file);
+            const { data } = supabase.storage.from('prompt-images').getPublicUrl(fileName);
+            mainImageUrl = data.publicUrl;
+        }
+
+        const { data: prompt, error: promptError } = await supabase
         .from('prompts')
         .insert({
           title: formData.title,
-          description: formData.description || (promptType === 'product' ? formData.instructions : promptTexts[0]),
+          description: formData.description || promptTexts[0],
           video_prompt: formData.video_prompt,
-          category: selectedCategories[0], // Primary category for legacy support
-          categories: selectedCategories, // All categories
+          category: selectedCategories[0],
+          categories: selectedCategories,
           monetization_url: formData.monetization_url,
           credit_name: formData.credit_name || profile?.display_name,
           instagram_handle: formData.instagram_handle,
           is_published: true,
           creator_id: user?.id,
           is_paid: formData.is_paid,
-          price_credits: formData.is_paid ? formData.price_credits : null,
           is_bundle: files.length > 1,
-          prompt_type: promptType
+          prompt_type: promptType,
+          image: mainImageUrl
         })
         .select()
         .single();
 
-      if (promptError) throw promptError;
+        if (promptError) throw promptError;
 
-      // 2. Insert Content
-      const bundleData = promptTexts.map((text, idx) => ({ index: idx, text }));
-      await supabase.from('prompt_contents').insert({
-        prompt_id: prompt.id,
-        full_text: promptTexts[0],
-        bundle_data: bundleData
-      });
-
-      // 3. Upload Images
-      let firstImagePath = '';
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        
-        const options = promptType === 'product' 
-            ? { maxSizeMB: 0.08, maxWidthOrHeight: 1024, useWebWorker: true, fileType: 'image/webp' }
-            : { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true };
-
-        let compressedFile = file;
-        try {
-            compressedFile = await imageCompression(file, options);
-        } catch (e) {
-            console.warn("Compression failed, using original", e);
+        // Upload additional images and link
+        if (files.length > 0) {
+             for (let i = 0; i < files.length; i++) {
+                 const file = files[i];
+                 const fileName = `prompts/${prompt.id}_${i}_${file.name}`;
+                 await supabase.storage.from('prompt-images').upload(fileName, file);
+                 // We store the relative path for prompt_images table usually, or full URL
+                 // Using storage path as per existing schema logic
+                 await supabase.from('prompt_images').insert({
+                     prompt_id: prompt.id,
+                     storage_path: fileName,
+                     order_index: i
+                 });
+             }
         }
-        
-        const fileExt = compressedFile.type.split('/')[1] || 'webp';
-        const fileName = `${prompt.id}/${Date.now()}_${i}.${fileExt}`;
-        
-        if (i === 0) firstImagePath = fileName;
 
-        const { error: uploadError } = await supabase.storage.from('prompt-images').upload(fileName, compressedFile, {
-            cacheControl: '3600',
-            upsert: true,
-            contentType: compressedFile.type
-        });
-
-        if (uploadError) throw uploadError;
-        
-        await supabase.from('prompt_images').insert({
+        // Insert Content
+        await supabase.from('prompt_contents').insert({
             prompt_id: prompt.id,
-            storage_path: fileName,
-            order_index: i
+            full_text: promptTexts[0],
+            bundle_data: promptTexts.map((text, i) => ({ index: i, text }))
         });
-        setUploadProgress(((i + 1) / files.length) * 100);
-      }
+        
+        navigate('/prompts');
 
-      // 4. Update Main Image Path (CRITICAL FIX)
-      if (firstImagePath) {
-        await supabase
-            .from('prompts')
-            .update({ image: firstImagePath })
-            .eq('id', prompt.id);
-      }
-
-      navigate(promptType === 'product' ? '/product-prompts' : '/prompts');
     } catch (error: any) {
-      alert('Error: ' + error.message);
+        alert(error.message);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black pt-28 pb-12 px-4">
-      <div className="max-w-3xl mx-auto bg-white dark:bg-gray-900 rounded-3xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-800">
+      <div className="max-w-3xl mx-auto bg-white dark:bg-gray-900 rounded-3xl shadow-xl p-8 border border-gray-200 dark:border-gray-800">
+        <h1 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white">Upload Prompt</h1>
         
-        <div className="p-8 border-b border-gray-200 dark:border-gray-800">
-            <h1 className="text-2xl font-bold mb-6">Upload Prompt</h1>
-            <div className="flex bg-gray-100 dark:bg-black p-1 rounded-xl">
+        {/* Type Switcher */}
+        <div className="flex bg-gray-100 dark:bg-black p-1 rounded-xl mb-8">
+            {['standard', 'product', 'super'].map(t => (
                 <button 
-                    onClick={() => {
-                        setPromptType('standard');
-                        setSelectedCategories([]);
-                    }}
-                    className={`flex-1 py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all ${promptType === 'standard' ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-500'}`}
+                    key={t}
+                    onClick={() => { setPromptType(t as any); setSelectedCategories([]); }}
+                    className={`flex-1 py-3 rounded-lg font-bold text-sm capitalize transition-all ${promptType === t ? 'bg-white dark:bg-gray-800 shadow-sm text-black dark:text-white' : 'text-gray-500'}`}
                 >
-                    <ImageIcon className="w-4 h-4" /> Standard Prompt
+                    {t}
                 </button>
-                <button 
-                    onClick={() => {
-                        setPromptType('product');
-                        setSelectedCategories([]);
-                    }}
-                    className={`flex-1 py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all ${promptType === 'product' ? 'bg-white dark:bg-gray-800 shadow-sm' : 'text-gray-500'}`}
-                >
-                    <Box className="w-4 h-4" /> Product Prompt
-                </button>
-            </div>
+            ))}
         </div>
-        
-        <form onSubmit={handleSubmit} className="p-8 space-y-8">
-          <div className="space-y-4">
-            <label className="block text-sm font-bold">Images {promptType === 'product' && <span className="text-xs font-normal text-gray-500">(Auto-compressed for web)</span>}</label>
-            
-            {/* Drag & Drop Zone */}
-            <div 
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={cn(
-                    "grid grid-cols-4 gap-4 p-4 border-2 border-dashed rounded-xl transition-all",
-                    isDragging 
-                        ? "border-sky-500 bg-sky-50 dark:bg-sky-900/20" 
-                        : "border-gray-200 dark:border-gray-800 hover:border-sky-500 dark:hover:border-sky-500"
-                )}
-            >
-              {previews.map((src, idx) => (
-                <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group bg-gray-100 dark:bg-gray-800">
-                  <img src={src} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
-                  <button type="button" onClick={() => removeFile(idx)} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-              
-              <label className="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-black dark:hover:border-white glow-focus bg-gray-50 dark:bg-gray-800/50 transition-colors">
-                <Upload className="h-6 w-6 text-gray-400 mb-2" />
-                <span className="text-[10px] text-gray-500 font-bold text-center px-2">Click or Drop</span>
-                <input type="file" className="hidden" accept="image/*" multiple onChange={handleFileChange} />
-              </label>
 
-              {files.length === 0 && (
-                 <div className="col-span-3 flex items-center justify-center text-gray-400 text-sm italic">
-                    Drag and drop images here to upload
-                 </div>
-              )}
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Common Fields */}
             <div>
-              <label className="block text-sm font-bold mb-2">Title</label>
-              <input
-                type="text"
-                required
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-black dark:focus:ring-white outline-none glow-focus"
-              />
-            </div>
-            
-            {/* Multi-Select Categories */}
-            <div>
-                <label className="block text-sm font-bold mb-2">Categories (Select Multiple)</label>
-                <div className="flex flex-wrap gap-2 p-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 min-h-[52px]">
-                    {categories.map(cat => {
-                        const isSelected = selectedCategories.includes(cat);
-                        return (
-                            <button
-                                key={cat}
-                                type="button"
-                                onClick={() => toggleCategory(cat)}
-                                className={cn(
-                                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border flex items-center gap-1.5",
-                                    isSelected
-                                        ? "bg-black text-white dark:bg-white dark:text-black border-transparent shadow-sm"
-                                        : "bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-400"
-                                )}
-                            >
-                                {isSelected && <Check className="w-3 h-3" />}
-                                {cat}
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4 p-4 bg-gray-50 dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600">
-                  <Lock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm">Premium Prompt</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Earn credits when users unlock this.</p>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={formData.is_paid} 
-                  onChange={e => setFormData({...formData, is_paid: e.target.checked})} 
-                  className="sr-only peer" 
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-              </label>
+                <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">Title</label>
+                <input type="text" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
 
-            {formData.is_paid && (
-              <div className="mt-2 animate-in fade-in slide-in-from-top-2">
-                <label className="block text-sm font-bold mb-2">Price (Credits)</label>
-                <div className="relative">
-                  <Coins className="absolute left-3 top-3 w-5 h-5 text-amber-500" />
-                  <input 
-                    type="number" 
-                    min="1" 
-                    value={formData.price_credits} 
-                    onChange={e => setFormData({...formData, price_credits: parseFloat(e.target.value)})} 
-                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 focus:ring-2 focus:ring-amber-500 outline-none"
-                  />
-                </div>
-              </div>
+            {/* Super Prompt Specifics */}
+            {promptType === 'super' && (
+                <>
+                    <div>
+                        <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">What This Prompt Does</label>
+                        <textarea value={superData.what_it_does} onChange={e => setSuperData({...superData, what_it_does: e.target.value})} className="w-full p-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 text-slate-900 dark:text-white" rows={3} />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">How To Use</label>
+                        <textarea value={superData.how_to_use} onChange={e => setSuperData({...superData, how_to_use: e.target.value})} className="w-full p-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 text-slate-900 dark:text-white" rows={3} />
+                    </div>
+                </>
             )}
-          </div>
 
-          {promptType === 'product' && (
-             <div>
-                <label className="block text-sm font-bold mb-2">Instructions (Optional)</label>
-                <textarea
-                  rows={3}
-                  value={formData.instructions}
-                  onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 outline-none glow-focus"
-                  placeholder="Instructions for using this product prompt..."
-                />
-             </div>
-          )}
+            {/* Main Prompt Content */}
+            <div>
+                <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">Prompt Content</label>
+                <textarea required value={promptTexts[0]} onChange={e => setPromptTexts([e.target.value])} className="w-full p-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 font-mono text-sm text-slate-900 dark:text-white" rows={6} />
+            </div>
 
-          <div>
-            <label className="block text-sm font-bold mb-2">Prompt Text</label>
-            <textarea
-                required
-                rows={4}
-                value={promptTexts[0]}
-                onChange={(e) => {
-                    const newTexts = [...promptTexts];
-                    newTexts[0] = e.target.value;
-                    setPromptTexts(newTexts);
-                }}
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 outline-none glow-focus"
-                placeholder="Enter the main prompt..."
-            />
-          </div>
+            {/* Categories */}
+            <div>
+                <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">Categories</label>
+                <div className="flex flex-wrap gap-2">
+                    {categories.map(cat => (
+                        <button type="button" key={cat} onClick={() => toggleCategory(cat)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${selectedCategories.includes(cat) ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-transparent border-gray-200 dark:border-gray-800 text-slate-500'}`}>
+                            {cat}
+                        </button>
+                    ))}
+                </div>
+            </div>
 
-          <div>
-            <label className="block text-sm font-bold mb-2">Video Prompt (Optional)</label>
-            <textarea
-                rows={2}
-                value={formData.video_prompt}
-                onChange={(e) => setFormData({ ...formData, video_prompt: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 outline-none glow-focus"
-            />
-          </div>
+            {/* Images */}
+            <div>
+                <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">Images</label>
+                <div className="grid grid-cols-4 gap-4">
+                    {previews.map((src, i) => (
+                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden">
+                            <img src={src} className="w-full h-full object-cover" />
+                            <button type="button" onClick={() => removeFile(i)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"><X className="w-3 h-3" /></button>
+                        </div>
+                    ))}
+                    <label className="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        <Upload className="w-6 h-6 text-gray-400" />
+                        <input type="file" hidden multiple accept="image/*" onChange={handleFileChange} />
+                    </label>
+                </div>
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-4 bg-black dark:bg-white text-white dark:text-black font-bold text-lg rounded-xl hover:opacity-90 flex items-center justify-center gap-2 glow-button"
-          >
-            {loading ? <Loader2 className="animate-spin" /> : 'Submit Prompt'}
-          </button>
+            {/* Premium Toggle */}
+            <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800">
+                <Lock className="w-5 h-5 text-amber-500" />
+                <span className="font-bold text-sm text-slate-900 dark:text-white">Premium Content</span>
+                <div className="ml-auto">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked={formData.is_paid} onChange={e => setFormData({...formData, is_paid: e.target.checked})} className="sr-only peer" />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+            </div>
+
+            {/* Affiliate Info */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-900/30">
+                <div className="flex items-center gap-2 mb-1">
+                    <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span className="font-bold text-sm text-blue-700 dark:text-blue-300">Creator Commission</span>
+                </div>
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                    When users upgrade to Pro via your premium prompt, you earn 50% commission (10 Credits).
+                </p>
+            </div>
+
+            <button disabled={loading} className="w-full py-4 bg-black dark:bg-white text-white dark:text-black font-bold rounded-xl hover:opacity-90 transition-opacity">
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Upload'}
+            </button>
         </form>
       </div>
     </div>

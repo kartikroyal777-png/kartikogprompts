@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Settings, LogOut, Wallet, User, Heart, Image as ImageIcon, DollarSign, RefreshCw, Users, CreditCard, Sparkles, Camera, Loader2 } from 'lucide-react';
+import { Settings, LogOut, Wallet, User, Heart, Image as ImageIcon, DollarSign, RefreshCw, Users, CreditCard, Sparkles, Camera, Loader2, Star, Link as LinkIcon, Sun, Moon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
@@ -9,8 +9,9 @@ import UserListModal from '../components/UserListModal';
 import { Subscriber, EarningEntry, Prompt } from '../types';
 import PromptCard from '../components/PromptCard';
 import { getImageUrl } from '../lib/utils';
+import { useTheme } from '../context/ThemeContext';
 
-// Native image compression utility to avoid WebWorker crashes in WebContainer
+// Native image compression utility
 const compressImage = async (file: File): Promise<File> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -49,9 +50,9 @@ const compressImage = async (file: File): Promise<File> => {
 };
 
 const Profile = () => {
-  // Removed non-existent refreshWallet
-  const { user, profile, wallet, refreshProfile, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<'prompts' | 'settings'>('prompts');
+  const { user, profile, wallet, refreshProfile, signOut, isPro } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [activeTab, setActiveTab] = useState<'prompts' | 'favorites' | 'settings'>('prompts');
   const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
   const [converting, setConverting] = useState(false);
   
@@ -62,6 +63,7 @@ const Profile = () => {
   
   // Prompts
   const [myPrompts, setMyPrompts] = useState<Prompt[]>([]);
+  const [favoritePrompts, setFavoritePrompts] = useState<Prompt[]>([]);
   const [loadingPrompts, setLoadingPrompts] = useState(false);
   
   // Modals
@@ -82,6 +84,7 @@ const Profile = () => {
         fetchCreatorStats();
       }
       fetchMyPrompts();
+      fetchFavorites();
     }
   }, [profile, user, wallet]);
 
@@ -99,11 +102,7 @@ const Profile = () => {
 
       const formattedPrompts: Prompt[] = (data || []).map((p: any) => {
          const imagesList = (p.images || []).map((img: any) => getImageUrl(img.storage_path));
-
-        let imageUrl = imagesList[0];
-        if (!imageUrl) {
-           imageUrl = getImageUrl(p.image);
-        }
+        let imageUrl = imagesList[0] || getImageUrl(p.image);
 
         return {
           id: p.id,
@@ -120,7 +119,8 @@ const Profile = () => {
           is_paid: p.is_paid,
           price_credits: p.price_credits,
           is_bundle: p.is_bundle,
-          prompt_type: p.prompt_type
+          prompt_type: p.prompt_type,
+          categories: p.categories || [p.category]
         };
       });
 
@@ -133,6 +133,39 @@ const Profile = () => {
     } finally {
       setLoadingPrompts(false);
     }
+  };
+
+  const fetchFavorites = async () => {
+      try {
+          const likedIds = JSON.parse(localStorage.getItem('liked_prompts') || '[]');
+          if (likedIds.length === 0) {
+              setFavoritePrompts([]);
+              return;
+          }
+          
+          const { data, error } = await supabase
+            .from('prompts')
+            .select(`*, images:prompt_images(storage_path, order_index)`)
+            .in('id', likedIds);
+            
+          if (error) throw error;
+          
+          const formatted = (data || []).map((p: any) => {
+             const imagesList = (p.images || []).map((img: any) => getImageUrl(img.storage_path));
+             let imageUrl = imagesList[0] || getImageUrl(p.image);
+             return {
+                 ...p,
+                 image: imageUrl,
+                 images: imagesList.length > 0 ? imagesList : [imageUrl],
+                 author: p.credit_name || 'Admin',
+                 promptId: p.short_id ? p.short_id.toString() : p.id.substring(0, 5),
+                 categories: p.categories || [p.category]
+             };
+          });
+          setFavoritePrompts(formatted);
+      } catch (e) {
+          console.error("Error fetching favorites", e);
+      }
   };
 
   const fetchCreatorStats = async () => {
@@ -163,18 +196,18 @@ const Profile = () => {
   };
 
   const handleConvertCredits = async () => {
-    if (earnedCredits < 15) {
-      toast.error('Minimum 15 earned credits required to convert');
+    // Updated Logic: 2 Credits = $1
+    if (earnedCredits < 2) {
+      toast.error('Minimum 2 earned credits required to convert');
       return;
     }
 
     try {
       setConverting(true);
-      const { error } = await supabase.rpc('convert_credits_to_usd', { credits_amount: 15 });
+      const { error } = await supabase.rpc('convert_credits_to_usd', { credits_amount: 2 });
       if (error) throw error;
-      // Use refreshProfile instead of undefined refreshWallet
       await refreshProfile();
-      toast.success('Successfully converted 15 credits to $1 USD');
+      toast.success('Successfully converted 2 credits to $1 USD');
     } catch (error) {
       console.error('Error converting credits:', error);
       toast.error('Failed to convert credits');
@@ -217,10 +250,7 @@ const Profile = () => {
     setUploadingAvatar(true);
 
     try {
-      // Use native compression instead of library
       const compressedFile = await compressImage(file);
-      
-      // Upload
       const fileExt = file.name.split('.').pop();
       const fileName = `avatars/${user.id}-${Date.now()}.${fileExt}`;
       
@@ -230,12 +260,10 @@ const Profile = () => {
 
       if (uploadError) throw uploadError;
 
-      // Get URL
       const { data: { publicUrl } } = supabase.storage
         .from('prompt-images')
         .getPublicUrl(fileName);
 
-      // Update Profile
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl })
@@ -253,15 +281,33 @@ const Profile = () => {
     }
   };
 
+  const copyAffiliateLink = () => {
+      const link = `${window.location.origin}/pricing?ref=${user.id}`;
+      navigator.clipboard.writeText(link);
+      toast.success("Affiliate Link Copied!");
+  };
+
   const showCreatorTools = profile.role === 'creator' || isAdmin || earnedCredits > 0;
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-slate-900 dark:text-white pt-24 pb-12 transition-colors duration-300">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        
         {/* Profile Header */}
-        <div className="bg-slate-50 dark:bg-gray-900 rounded-3xl p-8 mb-12 border border-slate-200 dark:border-gray-800 shadow-sm">
+        <div className="bg-slate-50 dark:bg-gray-900 rounded-3xl p-8 mb-12 border border-slate-200 dark:border-gray-800 shadow-sm relative">
+          
+          {/* Mobile Theme Toggle */}
+          <div className="absolute top-4 right-4 md:hidden">
+             <button
+                onClick={toggleTheme}
+                className="p-2 rounded-full bg-white dark:bg-black border border-gray-200 dark:border-gray-700 text-black dark:text-white"
+              >
+                {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+              </button>
+          </div>
+
           <div className="flex flex-col md:flex-row items-center gap-10">
-            {/* Avatar Section with Edit Button */}
+            {/* Avatar Section */}
             <div className="relative group">
               <div className="w-28 h-28 rounded-full bg-black dark:bg-white flex items-center justify-center text-4xl font-bold text-white dark:text-black shadow-lg overflow-hidden ring-4 ring-white dark:ring-gray-800">
                 {profile.avatar_url ? (
@@ -292,19 +338,23 @@ const Profile = () => {
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1 flex items-center justify-center md:justify-start gap-2">
                   {isAdmin ? 'Admin' : (profile.full_name || 'User')}
                   {profile.creator_badge && <Sparkles className="w-5 h-5 text-black dark:text-white" />}
+                  {isPro && <span className="px-2 py-0.5 bg-amber-500 text-white text-xs rounded-full font-bold">PRO</span>}
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 font-medium">{user.email}</p>
               </div>
               
               {/* Wallet Stats */}
               <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                <div className="bg-white dark:bg-black px-5 py-3 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm">
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Balance</div>
-                  <div className="flex items-center gap-2">
-                    <Wallet className="w-5 h-5 text-black dark:text-white" />
-                    <span className="font-bold text-lg text-slate-900 dark:text-white">{totalCredits}</span>
-                  </div>
-                </div>
+                {/* Affiliate Link Button - Black/White */}
+                {profile.creator_badge && (
+                    <button 
+                        onClick={copyAffiliateLink}
+                        className="bg-black dark:bg-white px-5 py-3 rounded-xl border border-gray-200 dark:border-gray-800 text-white dark:text-black hover:opacity-90 transition-colors flex items-center gap-2"
+                    >
+                        <LinkIcon className="w-4 h-4" />
+                        <span className="font-bold text-sm">Copy Affiliate Link</span>
+                    </button>
+                )}
 
                 {showCreatorTools && (
                   <>
@@ -319,30 +369,11 @@ const Profile = () => {
                       </div>
                     </button>
 
-                    <button 
-                      onClick={() => setShowSubscribersModal(true)}
-                      className="bg-white dark:bg-black px-5 py-3 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm hover:border-black dark:hover:border-white transition-colors group text-left"
-                    >
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-black dark:group-hover:text-white">Subscribers</div>
-                      <div className="flex items-center gap-2">
-                        <Users className="w-5 h-5 text-black dark:text-white" />
-                        <span className="font-bold text-lg text-slate-900 dark:text-white">{subscribers.length}</span>
-                      </div>
-                    </button>
-
-                    <div className="bg-white dark:bg-black px-5 py-3 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm">
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Likes</div>
-                      <div className="flex items-center gap-2">
-                        <Heart className="w-5 h-5 text-black dark:text-white" />
-                        <span className="font-bold text-lg text-slate-900 dark:text-white">{totalLikes}</span>
-                      </div>
-                    </div>
-
                     <div className="bg-white dark:bg-black px-5 py-3 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm">
                       <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">USD Wallet</div>
                       <div className="flex items-center gap-2">
                         <DollarSign className="w-5 h-5 text-black dark:text-white" />
-                        <span className="font-bold text-lg text-slate-900 dark:text-white">${profile.usd_balance || 0}</span>
+                        <span className="font-bold text-lg text-slate-900 dark:text-white">{profile.usd_balance || 0}</span>
                       </div>
                     </div>
                   </>
@@ -354,11 +385,11 @@ const Profile = () => {
                 <div className="flex flex-wrap gap-3 justify-center md:justify-start pt-2">
                   <button
                     onClick={handleConvertCredits}
-                    disabled={earnedCredits < 15 || converting}
+                    disabled={earnedCredits < 2 || converting}
                     className="bg-black dark:bg-white hover:opacity-80 text-white dark:text-black px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <RefreshCw className={`w-4 h-4 ${converting ? 'animate-spin' : ''}`} />
-                    Convert 15 Credits to $1
+                    Convert 2 Credits to $1
                   </button>
                   
                   <button
@@ -373,9 +404,11 @@ const Profile = () => {
             </div>
 
             <div className="flex flex-col gap-3 min-w-[160px]">
-              <Link to="/buy-credits" className="bg-black dark:bg-white hover:opacity-80 text-white dark:text-black px-6 py-3 rounded-xl font-bold transition-all shadow-lg text-center">
-                Buy Credits
-              </Link>
+              {!isPro && (
+                  <Link to="/pricing" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg text-center">
+                    Upgrade to Pro
+                  </Link>
+              )}
               <button onClick={handleSignOut} className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-gray-700 px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2">
                 <LogOut className="w-4 h-4" />
                 Sign Out
@@ -385,10 +418,10 @@ const Profile = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-200 dark:border-gray-800 mb-8">
+        <div className="flex border-b border-slate-200 dark:border-gray-800 mb-8 overflow-x-auto">
           <button
             onClick={() => setActiveTab('prompts')}
-            className={`px-8 py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors ${
+            className={`px-8 py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'prompts' ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
@@ -396,8 +429,17 @@ const Profile = () => {
             My Prompts
           </button>
           <button
+            onClick={() => setActiveTab('favorites')}
+            className={`px-8 py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === 'favorites' ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            <Star className="w-4 h-4" />
+            Favorites
+          </button>
+          <button
             onClick={() => setActiveTab('settings')}
-            className={`px-8 py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors ${
+            className={`px-8 py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'settings' ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
@@ -424,6 +466,26 @@ const Profile = () => {
                   <p className="text-lg font-medium text-slate-600 dark:text-slate-400">You haven't uploaded any prompts yet.</p>
                   <Link to="/upload" className="text-black dark:text-white hover:underline font-bold mt-2 inline-block">
                     Upload your first prompt
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === 'favorites' && (
+            <>
+              {favoritePrompts.length > 0 ? (
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6">
+                  {favoritePrompts.map(prompt => (
+                    <PromptCard key={prompt.id} prompt={prompt} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-slate-400 py-16 bg-slate-50 dark:bg-gray-900 rounded-3xl border border-slate-100 dark:border-gray-800">
+                  <Star className="w-16 h-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
+                  <p className="text-lg font-medium text-slate-600 dark:text-slate-400">No favorites yet.</p>
+                  <Link to="/prompts" className="text-black dark:text-white hover:underline font-bold mt-2 inline-block">
+                    Browse prompts
                   </Link>
                 </div>
               )}

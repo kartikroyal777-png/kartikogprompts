@@ -108,7 +108,6 @@ const Threads: React.FC<ThreadsProps> = ({
 
     const renderer = new Renderer({ 
         alpha: true,
-        // Reduced DPR to 1 for maximum performance
         dpr: 1, 
         preserveDrawingBuffer: false,
         powerPreference: "high-performance"
@@ -147,7 +146,7 @@ const Threads: React.FC<ThreadsProps> = ({
     // Initial resize
     resize();
     
-    // FIX: Removed setTimeout debounce to prevent "t._onTimeout is not a function" error
+    // STRICT FIX: No setTimeout used here to avoid "t._onTimeout is not a function"
     const handleResize = () => {
         resize();
     };
@@ -186,6 +185,9 @@ const Threads: React.FC<ThreadsProps> = ({
       // Cleanup
       if (animationFrameId.current) cancelAnimationFrame(animationFrameId.current);
       window.removeEventListener('resize', handleResize);
+      if (enableMouseInteraction) {
+        container.removeEventListener('mousemove', handleMouseMove);
+      }
       if (container && container.contains(gl.canvas)) container.removeChild(gl.canvas);
       
       // Safely lose context

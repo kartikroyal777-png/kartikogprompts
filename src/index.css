@@ -42,7 +42,7 @@ body {
 }
 
 .btn-primary {
-  @apply bg-black text-white dark:bg-white dark:text-black font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-black/10 dark:shadow-white/10;
+  @apply bg-white text-black font-bold hover:bg-gray-100 transition-all active:scale-95 shadow-lg shadow-white/10 border border-gray-200 dark:border-gray-800;
 }
 
 .btn-secondary {
@@ -51,7 +51,7 @@ body {
 
 /* Glowing Effects */
 .glow-focus:focus-within {
-  @apply ring-2 ring-sky-500/50 shadow-[0_0_20px_rgba(14,165,233,0.3)];
+  @apply ring-2 ring-white/50 shadow-[0_0_20px_rgba(255,255,255,0.3)];
 }
 
 .glow-button {
@@ -77,4 +77,18 @@ body {
     linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
   /* Added a very subtle gradient overlay to the whole background */
   background-color: #050505;
+}
+
+/* Infinite Scroll Animation */
+@keyframes scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-scroll {
+  animation: scroll 40s linear infinite;
+}
+
+.pause-on-hover:hover .animate-scroll {
+  animation-play-state: paused;
 }

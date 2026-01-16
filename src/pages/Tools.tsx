@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, MessageSquare, BookOpen, Copy, Check, Loader2, Lock } from 'lucide-react';
+import { Sparkles, MessageSquare, BookOpen, Copy, Check, Loader2, Lock, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { enhancePrompt } from '../lib/gemini';
@@ -122,6 +122,10 @@ export default function Tools() {
     }
   };
 
+  const handleLockedAction = () => {
+      navigate('/pricing');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-black pt-24 pb-24 px-4 overflow-hidden relative">
       <div className="fixed inset-0 z-0 opacity-30 pointer-events-none">
@@ -152,7 +156,7 @@ export default function Tools() {
                 >
                     <tab.icon className="w-4 h-4" />
                     {tab.label}
-                    {tab.id === 'guide' && !isPro && <Lock className="w-3 h-3 ml-1 text-amber-500" />}
+                    {tab.id !== 'enhancer' && !isPro && <Lock className="w-3 h-3 ml-1 text-amber-500" />}
                 </button>
             ))}
         </div>
@@ -200,68 +204,94 @@ export default function Tools() {
 
             {/* CUSTOM REQUEST TAB */}
             {activeTab === 'custom' && (
-                <div className="max-w-2xl mx-auto text-center">
-                    {!isPro ? (
-                        <div className="py-12">
-                            <div className="w-20 h-20 bg-black dark:bg-white rounded-full flex items-center justify-center mx-auto mb-6 text-white dark:text-black">
-                                <MessageSquare className="w-10 h-10" />
-                            </div>
-                            <h3 className="text-3xl font-black mb-4 text-slate-900 dark:text-white">Custom Prompt Requests</h3>
-                            <p className="mb-8 text-slate-500 text-lg">
-                                Can't find what you need? Our team of expert prompt engineers will craft a custom prompt just for you.
-                            </p>
-                            <Link to="/pricing" className="inline-flex items-center gap-2 px-8 py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold text-lg transition-all shadow-lg">
-                                Unlock with Pro <Lock className="w-5 h-5" />
-                            </Link>
+                <div className="max-w-2xl mx-auto">
+                    <div className="text-center mb-8">
+                        <div className="w-16 h-16 bg-black dark:bg-white rounded-full flex items-center justify-center mx-auto mb-4 text-white dark:text-black shadow-lg">
+                            <MessageSquare className="w-8 h-8" />
                         </div>
-                    ) : (
-                        <form onSubmit={handleCustomRequest} className="space-y-4 text-left">
-                            <h3 className="font-bold text-xl text-slate-900 dark:text-white mb-4">Request a Prompt</h3>
+                        <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Request a Prompt</h3>
+                        <p className="text-slate-500 dark:text-slate-400">
+                            Can't find what you need? Our team of expert prompt engineers will craft a custom prompt just for you.
+                        </p>
+                    </div>
+
+                    <form onSubmit={handleCustomRequest} className="space-y-6 text-left">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                Describe your idea
+                            </label>
                             <textarea 
                                 value={requestText}
                                 onChange={e => setRequestText(e.target.value)}
-                                rows={6}
+                                rows={5}
                                 className="w-full p-4 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-black dark:focus:ring-white"
-                                placeholder="Describe exactly what you need..."
+                                placeholder="E.g., A futuristic cyberpunk city with neon lights, raining, reflections on wet pavement..."
                             />
-                            
-                            {/* Image Upload */}
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                                    Reference Image (Optional)
-                                </label>
-                                <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-black dark:hover:border-white transition-colors bg-gray-50 dark:bg-black group">
-                                    {requestImagePreview ? (
-                                        <>
-                                            <img src={requestImagePreview} alt="Reference" className="w-full h-full object-cover" />
-                                            <button 
-                                                type="button"
-                                                onClick={() => { setRequestImage(null); setRequestImagePreview(null); }}
-                                                className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <div className="w-4 h-4 flex items-center justify-center font-bold">×</div>
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
-                                            <Sparkles className="w-8 h-8 mb-2" />
-                                            <span className="text-xs font-bold">Upload Reference</span>
-                                        </div>
-                                    )}
-                                    <input 
-                                        type="file" 
-                                        accept="image/*"
-                                        onChange={handleRequestImageChange}
-                                        className="absolute inset-0 opacity-0 cursor-pointer"
-                                    />
-                                </div>
-                            </div>
+                        </div>
 
-                            <button disabled={submittingRequest} className="w-full py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90 transition-opacity">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                Your Email
+                            </label>
+                            <input 
+                                type="email"
+                                value={requestEmail}
+                                onChange={e => setRequestEmail(e.target.value)}
+                                className="w-full p-4 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 outline-none text-slate-900 dark:text-white focus:ring-2 focus:ring-black dark:focus:ring-white"
+                                placeholder="you@example.com"
+                            />
+                        </div>
+                        
+                        {/* Image Upload */}
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                                Reference Image (Optional)
+                            </label>
+                            <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-black dark:hover:border-white transition-colors bg-gray-50 dark:bg-black group">
+                                {requestImagePreview ? (
+                                    <>
+                                        <img src={requestImagePreview} alt="Reference" className="w-full h-full object-cover" />
+                                        <button 
+                                            type="button"
+                                            onClick={() => { setRequestImage(null); setRequestImagePreview(null); }}
+                                            className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <div className="w-4 h-4 flex items-center justify-center font-bold">×</div>
+                                        </button>
+                                    </>
+                                ) : (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
+                                        <Sparkles className="w-8 h-8 mb-2" />
+                                        <span className="text-xs font-bold">Upload Reference</span>
+                                    </div>
+                                )}
+                                <input 
+                                    type="file" 
+                                    accept="image/*"
+                                    onChange={handleRequestImageChange}
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                />
+                            </div>
+                        </div>
+
+                        {isPro ? (
+                            <button 
+                                type="submit"
+                                disabled={submittingRequest} 
+                                className="w-full py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg"
+                            >
                                 {submittingRequest ? 'Sending...' : 'Send Request'}
                             </button>
-                        </form>
-                    )}
+                        ) : (
+                            <button 
+                                type="button"
+                                onClick={handleLockedAction}
+                                className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg flex items-center justify-center gap-2"
+                            >
+                                <Lock className="w-5 h-5" /> Unlock to Send Request
+                            </button>
+                        )}
+                    </form>
                 </div>
             )}
 
@@ -298,12 +328,12 @@ export default function Tools() {
                                 <BookOpen className="w-5 h-5" /> Access Guide
                             </a>
                         ) : (
-                            <Link 
-                                to="/pricing" 
-                                className="px-8 py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90 inline-flex items-center gap-2 shadow-lg"
+                            <button 
+                                onClick={handleLockedAction}
+                                className="px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold hover:opacity-90 inline-flex items-center gap-2 shadow-lg"
                             >
-                                Unlock Guide with Pro <ArrowRight className="w-5 h-5" />
-                            </Link>
+                                <Lock className="w-5 h-5" /> Unlock Guide with Pro
+                            </button>
                         )}
                     </div>
                 </div>

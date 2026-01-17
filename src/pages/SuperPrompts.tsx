@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Zap, ChevronRight, ArrowLeft, Copy, Check, Loader2, TrendingUp, BarChart, User, ShoppingBag, Percent, GraduationCap, PenTool, Briefcase, Megaphone, Lock, Heart, Info, Play, Star } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Zap, ChevronRight, ArrowLeft, Copy, Check, Loader2, TrendingUp, BarChart, User, ShoppingBag, Percent, GraduationCap, PenTool, Briefcase, Megaphone, Lock, Heart, Info, Play, Star, Crown } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { SuperPromptCategory, SuperPrompt } from '../types';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -24,6 +24,7 @@ const CATEGORY_ICONS: Record<string, any> = {
 
 export default function SuperPrompts() {
   const { user, isPro } = useAuth();
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<SuperPromptCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<SuperPromptCategory | null>(null);
   const [prompts, setPrompts] = useState<SuperPrompt[]>([]);
@@ -98,6 +99,8 @@ export default function SuperPrompts() {
       setLikesCount(newLikesCount);
       setIsLiked(newIsLiked);
   };
+
+  const isLocked = selectedPrompt?.is_premium && !isPro;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-black pt-24 pb-12 px-4 transition-colors duration-300">
@@ -244,32 +247,56 @@ export default function SuperPrompts() {
                 </div>
                 
                 <div className="space-y-10">
-                    {/* 1. What It Does Section */}
-                    <section>
-                        <h3 className="text-sm font-bold uppercase text-slate-400 mb-3 flex items-center gap-2">
-                            <Info className="w-4 h-4" /> What This Prompt Does
-                        </h3>
-                        <div className="bg-blue-50 dark:bg-blue-900/10 p-5 rounded-xl border border-blue-100 dark:border-blue-900/30">
-                            <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{selectedPrompt.what_it_does}</p>
-                        </div>
-                    </section>
-
-                    {/* 2. Main Prompt Section */}
+                    {/* 1. Main Prompt Section (Moved to Top) */}
                     <section className="relative group">
                         <div className="flex justify-between items-center mb-3">
                             <h3 className="text-sm font-bold uppercase text-slate-400 flex items-center gap-2">
                                 <Zap className="w-4 h-4" /> The Prompt
                             </h3>
-                            <button 
-                                onClick={() => handleCopy(selectedPrompt.prompt_content)}
-                                className="flex items-center gap-2 text-xs font-bold bg-black text-white dark:bg-white dark:text-black px-3 py-1.5 rounded-lg hover:opacity-80 transition-colors"
-                            >
-                                {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                {copied ? 'Copied' : 'Copy'}
-                            </button>
+                            {!isLocked && (
+                                <button 
+                                    onClick={() => handleCopy(selectedPrompt.prompt_content)}
+                                    className="flex items-center gap-2 text-xs font-bold bg-black text-white dark:bg-white dark:text-black px-3 py-1.5 rounded-lg hover:opacity-80 transition-colors"
+                                >
+                                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                    {copied ? 'Copied' : 'Copy'}
+                                </button>
+                            )}
                         </div>
-                        <div className="bg-gray-50 dark:bg-black p-6 rounded-xl border border-gray-200 dark:border-gray-800 font-mono text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap shadow-inner">
-                            {selectedPrompt.prompt_content}
+                        
+                        <div className="relative">
+                            {isLocked ? (
+                                <div className="bg-gray-50 dark:bg-black p-6 rounded-xl border border-gray-200 dark:border-gray-800 font-mono text-sm text-slate-800 dark:text-slate-200 shadow-inner relative overflow-hidden min-h-[150px]">
+                                    <div className="filter blur-md select-none opacity-50">
+                                        {selectedPrompt.prompt_content.substring(0, 150)}...
+                                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+                                    </div>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-white/10 dark:bg-black/10 backdrop-blur-[2px]">
+                                        <Lock className="w-10 h-10 text-amber-500 mb-3" />
+                                        <p className="text-lg font-bold text-slate-900 dark:text-white mb-4">Premium Prompt</p>
+                                        <Link 
+                                            to="/pricing" 
+                                            className="px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
+                                        >
+                                            <Crown className="w-5 h-5 fill-current" /> Unlock with Pro
+                                        </Link>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="bg-gray-50 dark:bg-black p-6 rounded-xl border border-gray-200 dark:border-gray-800 font-mono text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap shadow-inner">
+                                    {selectedPrompt.prompt_content}
+                                </div>
+                            )}
+                        </div>
+                    </section>
+
+                    {/* 2. What It Does Section (Moved Below) */}
+                    <section>
+                        <h3 className="text-sm font-bold uppercase text-slate-400 mb-3 flex items-center gap-2">
+                            <Info className="w-4 h-4" /> What This Prompt Does
+                        </h3>
+                        <div className="bg-black text-white p-6 rounded-xl border border-gray-800 shadow-lg">
+                            <p className="leading-relaxed opacity-90">{selectedPrompt.what_it_does}</p>
                         </div>
                     </section>
 
@@ -278,8 +305,8 @@ export default function SuperPrompts() {
                         <h3 className="text-sm font-bold uppercase text-slate-400 mb-3 flex items-center gap-2">
                             <Play className="w-4 h-4" /> How To Use
                         </h3>
-                        <div className="bg-green-50 dark:bg-green-900/10 p-5 rounded-xl border border-green-100 dark:border-green-900/30">
-                            <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{selectedPrompt.how_to_use}</p>
+                        <div className="bg-black text-white p-6 rounded-xl border border-gray-800 shadow-lg">
+                            <p className="leading-relaxed opacity-90">{selectedPrompt.how_to_use}</p>
                         </div>
                     </section>
 

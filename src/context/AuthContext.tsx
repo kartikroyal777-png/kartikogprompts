@@ -57,18 +57,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfileAndWallet(session.user.id);
+    // Initial Session Check with Error Handling
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn("Auth session error:", error.message);
+        // If refresh token is invalid, clear local storage to prevent infinite loops
+        if (error.message.includes("Refresh Token Not Found") || error.message.includes("Invalid Refresh Token")) {
+           supabase.auth.signOut().catch(() => {});
+           setSession(null);
+           setUser(null);
+           setProfile(null);
+           setWallet(null);
+        }
+      } else {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchProfileAndWallet(session.user.id);
+        }
       }
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Handle explicit sign-out events or token issues
+      if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setWallet(null);
+        setLoading(false);
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
+      
       if (session?.user) {
         fetchProfileAndWallet(session.user.id);
       } else {
@@ -85,6 +109,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
     setProfile(null);
     setWallet(null);
+    setUser(null);
+    setSession(null);
   };
 
   const refreshProfile = async () => {

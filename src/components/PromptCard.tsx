@@ -69,11 +69,11 @@ const PromptCard: React.FC<PromptCardProps> = ({ prompt, onLikeToggle }) => {
 
       {/* Badges Container - Top Left */}
       <div className="absolute top-2 left-2 md:top-3 md:left-3 z-20 flex flex-col gap-1.5 items-start pointer-events-none">
-        {/* Premium Badge - Monochrome */}
+        {/* Premium Badge - Updated to show 'Premium' instead of credits */}
         {prompt.is_paid && (
           <div className="bg-white/90 text-black dark:bg-black/90 dark:text-white backdrop-blur-md text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-full flex items-center gap-1 shadow-lg border border-black/10 dark:border-white/10">
             <Lock className="w-2.5 h-2.5 md:w-3 md:h-3" />
-            {prompt.price_credits} Cr
+            Premium
           </div>
         )}
 

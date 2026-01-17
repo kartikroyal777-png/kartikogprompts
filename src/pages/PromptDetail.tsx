@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Heart, Share2, Copy, Check, Instagram, ArrowLeft, ExternalLink, Video, Lock, Unlock, Sparkles, Layers } from 'lucide-react';
+import { Heart, Share2, Copy, Check, Instagram, ArrowLeft, ExternalLink, Video, Lock, Unlock, Sparkles, Layers, Crown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Prompt } from '../types';
 import { getIsLiked, toggleLike } from '../lib/likes';
@@ -145,11 +145,8 @@ const PromptDetail = () => {
   };
 
   const handleUnlockClick = () => {
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
-    setShowUnlockModal(true);
+    // Redirect to pricing page for Pro membership
+    navigate('/pricing');
   };
 
   const confirmUnlock = async () => {
@@ -373,23 +370,15 @@ const PromptDetail = () => {
                     <Lock className="w-12 h-12 text-slate-400 mb-4" />
                     
                     <div className="flex flex-col gap-3 w-full max-w-xs">
-                      <button
-                        onClick={handleUnlockClick}
+                      <Link
+                        to="/pricing"
                         className="px-6 py-3 bg-black dark:bg-white hover:opacity-80 text-white dark:text-black font-bold rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
                       >
-                        <Unlock className="w-5 h-5" />
-                        Unlock for {prompt.price_credits} Credits
-                      </button>
+                        <Crown className="w-5 h-5" />
+                        Unlock for Pro Member
+                      </Link>
                       
-                      {prompt.creator_id && (
-                        <Link
-                          to={`/creator/${prompt.creator_id}`}
-                          className="px-6 py-3 bg-white dark:bg-black border border-gray-200 dark:border-gray-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all flex items-center justify-center gap-2"
-                        >
-                          <Sparkles className="w-5 h-5 text-black dark:text-white" />
-                          Unlock All from Creator
-                        </Link>
-                      )}
+                      {/* Removed Unlock All From Creator Button */}
                     </div>
                   </div>
                 </div>

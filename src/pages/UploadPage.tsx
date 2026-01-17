@@ -57,13 +57,59 @@ const UploadPage = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files);
-      const newPreviews = newFiles.map(file => URL.createObjectURL(file));
-      setFiles(prev => [...prev, ...newFiles]);
-      setPreviews(prev => [...prev, ...newPreviews]);
+      await processFiles(Array.from(e.target.files));
     }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        await processFiles(Array.from(e.dataTransfer.files));
+    }
+  };
+
+  const processFiles = async (fileList: File[]) => {
+    const compressionOptions = {
+        maxSizeMB: 0.05, // 50KB
+        maxWidthOrHeight: 1024,
+        useWebWorker: true,
+        fileType: 'image/jpeg'
+    };
+
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
+
+    for (const file of fileList) {
+        // Basic validation
+        if (!file.type.startsWith('image/')) continue;
+
+        try {
+            const compressed = await imageCompression(file, compressionOptions);
+            newFiles.push(compressed);
+            newPreviews.push(URL.createObjectURL(compressed));
+        } catch (err) {
+            console.warn("Compression failed for", file.name, err);
+            // Fallback to original if compression fails, but warn user
+            newFiles.push(file);
+            newPreviews.push(URL.createObjectURL(file));
+        }
+    }
+    
+    setFiles(prev => [...prev, ...newFiles]);
+    setPreviews(prev => [...prev, ...newPreviews]);
   };
 
   const removeFile = (index: number) => {
@@ -91,25 +137,12 @@ const UploadPage = () => {
             const { data: catData } = await supabase.from('super_prompt_categories').select('id').eq('name', selectedCategories[0]).single();
             if (!catData) throw new Error("Invalid Category");
 
-            // Upload images with STRICT compression (< 50KB)
+            // Upload images (already compressed in processFiles)
             const imageUrls: string[] = [];
-            const compressionOptions = {
-                maxSizeMB: 0.05, // 50KB
-                maxWidthOrHeight: 800,
-                useWebWorker: true,
-                fileType: 'image/jpeg'
-            };
 
             for (const file of files) {
-                let uploadFile = file;
-                try {
-                    uploadFile = await imageCompression(file, compressionOptions);
-                } catch (cErr) {
-                    console.warn("Compression failed, using original", cErr);
-                }
-
                 const fileName = `super/${Date.now()}_${file.name}`;
-                await supabase.storage.from('prompt-images').upload(fileName, uploadFile);
+                await supabase.storage.from('prompt-images').upload(fileName, file);
                 const { data } = supabase.storage.from('prompt-images').getPublicUrl(fileName);
                 imageUrls.push(data.publicUrl);
             }
@@ -249,18 +282,31 @@ const UploadPage = () => {
                 </div>
             </div>
 
-            {/* Images */}
+            {/* Images - Drag and Drop */}
             <div>
-                <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">Images</label>
+                <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">Images (Auto-compressed to &lt;50KB)</label>
                 <div className="grid grid-cols-4 gap-4">
                     {previews.map((src, i) => (
-                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden">
+                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden group">
                             <img src={src} className="w-full h-full object-cover" />
-                            <button type="button" onClick={() => removeFile(i)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"><X className="w-3 h-3" /></button>
+                            <button type="button" onClick={() => removeFile(i)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
                         </div>
                     ))}
-                    <label className="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                        <Upload className="w-6 h-6 text-gray-400" />
+                    <label 
+                        className={cn(
+                            "aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all",
+                            isDragging 
+                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" 
+                                : "border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        )}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                    >
+                        <Upload className={cn("w-6 h-6 mb-2", isDragging ? "text-blue-500" : "text-gray-400")} />
+                        <span className={cn("text-xs font-bold", isDragging ? "text-blue-500" : "text-gray-400")}>
+                            {isDragging ? "Drop Here" : "Upload / Drag"}
+                        </span>
                         <input type="file" hidden multiple accept="image/*" onChange={handleFileChange} />
                     </label>
                 </div>

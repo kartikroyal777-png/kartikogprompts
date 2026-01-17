@@ -12,6 +12,7 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
   const LOGO_URL = "https://cdn.phototourl.com/uploads/2026-01-16-b1550510-f87e-4751-b08e-9d4421d7a041.jpg";
 
   useEffect(() => {
+    // FIX: Ensure callback is a simple synchronous wrapper
     const timer = setTimeout(() => {
       const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding_v3');
       if (hasSeenOnboarding) {

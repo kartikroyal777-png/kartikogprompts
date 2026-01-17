@@ -11,7 +11,7 @@ export default function EbookPopup() {
     const hasSeenPopup = localStorage.getItem('hasSeenEbookPopup_v2');
     
     if (!hasSeenPopup) {
-      // Show popup after a short delay
+      // FIX: Ensure callback is a simple synchronous wrapper
       const timer = setTimeout(() => {
         setIsVisible(true);
       }, 1500);

@@ -88,38 +88,42 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const delayDebounceFn = setTimeout(async () => {
-      if (searchQuery.trim().length >= 2) {
-        setIsSearching(true);
-        setShowResults(true);
-        try {
-          const { data, error } = await supabase
-            .from('prompts')
-            .select(`id, title, prompt_type, image, prompt_images(storage_path, order_index), category`)
-            .eq('is_published', true)
-            .ilike('title', `%${searchQuery}%`)
-            .limit(6);
+    // FIX: Using a synchronous wrapper for the async logic inside setTimeout
+    const delayDebounceFn = setTimeout(() => {
+      const performSearch = async () => {
+        if (searchQuery.trim().length >= 2) {
+          setIsSearching(true);
+          setShowResults(true);
+          try {
+            const { data, error } = await supabase
+              .from('prompts')
+              .select(`id, title, prompt_type, image, prompt_images(storage_path, order_index), category`)
+              .eq('is_published', true)
+              .ilike('title', `%${searchQuery}%`)
+              .limit(6);
 
-          if (error) throw error;
+            if (error) throw error;
 
-          const formatted = (data || []).map((p: any) => {
-             const rawImages = p.prompt_images || [];
-             const imagesList = rawImages
-                .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
-                .map((img: any) => getImageUrl(img.storage_path));
-            let imageUrl = imagesList[0] || getImageUrl(p.image);
-            return { ...p, image: imageUrl };
-          });
-          setSearchResults(formatted);
-        } catch (error) {
-          console.error("Search error:", error);
-        } finally {
-          setIsSearching(false);
+            const formatted = (data || []).map((p: any) => {
+               const rawImages = p.prompt_images || [];
+               const imagesList = rawImages
+                  .sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
+                  .map((img: any) => getImageUrl(img.storage_path));
+              let imageUrl = imagesList[0] || getImageUrl(p.image);
+              return { ...p, image: imageUrl };
+            });
+            setSearchResults(formatted);
+          } catch (error) {
+            console.error("Search error:", error);
+          } finally {
+            setIsSearching(false);
+          }
+        } else {
+          setSearchResults([]);
+          setShowResults(false);
         }
-      } else {
-        setSearchResults([]);
-        setShowResults(false);
-      }
+      };
+      performSearch();
     }, 300);
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);

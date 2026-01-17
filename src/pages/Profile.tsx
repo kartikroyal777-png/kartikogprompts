@@ -301,7 +301,7 @@ const Profile = () => {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Profile Header */}
-        <div className="bg-slate-50 dark:bg-gray-900 rounded-3xl p-8 mb-12 border border-slate-200 dark:border-gray-800 shadow-sm relative">
+        <div className="bg-slate-50 dark:bg-gray-900 rounded-3xl p-6 md:p-8 mb-12 border border-slate-200 dark:border-gray-800 shadow-sm relative">
           
           {/* Mobile Theme Toggle */}
           <div className="absolute top-4 right-4 md:hidden">
@@ -313,10 +313,10 @@ const Profile = () => {
               </button>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center gap-10">
+          <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10">
             {/* Avatar Section */}
             <div className="relative group">
-              <div className="w-28 h-28 rounded-full bg-black dark:bg-white flex items-center justify-center text-4xl font-bold text-white dark:text-black shadow-lg overflow-hidden ring-4 ring-white dark:ring-gray-800">
+              <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-black dark:bg-white flex items-center justify-center text-3xl md:text-4xl font-bold text-white dark:text-black shadow-lg overflow-hidden ring-4 ring-white dark:ring-gray-800">
                 {profile.avatar_url ? (
                   <img src={profile.avatar_url} alt={profile.full_name || ''} className="w-full h-full object-cover" />
                 ) : (
@@ -329,7 +329,7 @@ const Profile = () => {
                 )}
               </div>
               <label className="absolute bottom-0 right-0 p-2 bg-black dark:bg-white text-white dark:text-black rounded-full cursor-pointer shadow-lg hover:opacity-90 transition-all active:scale-95 border border-gray-200 dark:border-gray-800 z-20">
-                <Camera className="w-5 h-5" />
+                <Camera className="w-4 h-4 md:w-5 md:h-5" />
                 <input 
                   type="file" 
                   className="hidden" 
@@ -342,22 +342,22 @@ const Profile = () => {
             
             <div className="flex-1 text-center md:text-left space-y-4 w-full">
               <div>
-                <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1 flex items-center justify-center md:justify-start gap-2">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-1 flex items-center justify-center md:justify-start gap-2">
                   {isAdmin ? 'Admin' : (profile.full_name || 'User')}
-                  {profile.creator_badge && <Sparkles className="w-5 h-5 text-black dark:text-white" />}
-                  {isPro && <span className="px-2 py-0.5 bg-amber-500 text-white text-xs rounded-full font-bold">PRO</span>}
+                  {profile.creator_badge && <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-black dark:text-white" />}
+                  {isPro && <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] md:text-xs rounded-full font-bold">PRO</span>}
                 </h1>
-                <p className="text-slate-500 dark:text-slate-400 font-medium">{user.email}</p>
+                <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 font-medium">{user.email}</p>
               </div>
               
               {/* Action Buttons Row */}
-              <div className="flex flex-wrap justify-center md:justify-start gap-3">
+              <div className="flex flex-wrap justify-center md:justify-start gap-2 md:gap-3 w-full md:w-auto">
                   {/* Upload Button (For Everyone) */}
                   <Link 
                     to="/upload" 
-                    className="flex items-center gap-2 px-5 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90 transition-all shadow-md"
+                    className="flex items-center justify-center gap-2 px-4 py-2 md:px-5 md:py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90 transition-all shadow-md text-xs md:text-sm flex-1 md:flex-none min-w-[120px] md:min-w-0"
                   >
-                      <Upload className="w-4 h-4" />
+                      <Upload className="w-3.5 h-3.5 md:w-4 md:h-4" />
                       Upload Prompt
                   </Link>
 
@@ -365,34 +365,34 @@ const Profile = () => {
                   {!isPro && (
                       <Link 
                         to="/pricing" 
-                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold hover:brightness-110 transition-all shadow-md"
+                        className="flex items-center justify-center gap-2 px-4 py-2 md:px-5 md:py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold hover:brightness-110 transition-all shadow-md text-xs md:text-sm flex-1 md:flex-none min-w-[120px] md:min-w-0"
                       >
-                          <Crown className="w-4 h-4" />
+                          <Crown className="w-3.5 h-3.5 md:w-4 md:h-4" />
                           Upgrade to Pro
                       </Link>
                   )}
               </div>
 
               {/* Wallet Stats */}
-              <div className="flex flex-wrap justify-center md:justify-start gap-4 pt-2">
+              <div className="flex flex-wrap justify-center md:justify-start gap-2 md:gap-4 pt-2 w-full md:w-auto">
                 {showCreatorTools && (
                   <>
                     <button 
                       onClick={() => setShowEarningsModal(true)}
-                      className="bg-white dark:bg-black px-5 py-3 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm hover:border-black dark:hover:border-white transition-colors group text-left"
+                      className="bg-white dark:bg-black px-3 py-2 md:px-5 md:py-3 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm hover:border-black dark:hover:border-white transition-colors group text-left flex-1 md:flex-none min-w-[100px]"
                     >
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-black dark:group-hover:text-white">Earned Credits</div>
+                      <div className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 group-hover:text-black dark:group-hover:text-white">Earned Credits</div>
                       <div className="flex items-center gap-2">
-                        <CreditCard className="w-5 h-5 text-black dark:text-white" />
-                        <span className="font-bold text-lg text-slate-900 dark:text-white">{earnedCredits}</span>
+                        <CreditCard className="w-4 h-4 md:w-5 md:h-5 text-black dark:text-white" />
+                        <span className="font-bold text-sm md:text-lg text-slate-900 dark:text-white">{earnedCredits}</span>
                       </div>
                     </button>
 
-                    <div className="bg-white dark:bg-black px-5 py-3 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm">
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">USD Wallet</div>
+                    <div className="bg-white dark:bg-black px-3 py-2 md:px-5 md:py-3 rounded-xl border border-slate-200 dark:border-gray-800 shadow-sm flex-1 md:flex-none min-w-[100px]">
+                      <div className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">USD Wallet</div>
                       <div className="flex items-center gap-2">
-                        <DollarSign className="w-5 h-5 text-black dark:text-white" />
-                        <span className="font-bold text-lg text-slate-900 dark:text-white">{profile.usd_balance || 0}</span>
+                        <DollarSign className="w-4 h-4 md:w-5 md:h-5 text-black dark:text-white" />
+                        <span className="font-bold text-sm md:text-lg text-slate-900 dark:text-white">{profile.usd_balance || 0}</span>
                       </div>
                     </div>
                   </>
@@ -401,30 +401,30 @@ const Profile = () => {
 
               {/* Creator Actions */}
               {showCreatorTools && (
-                <div className="flex flex-wrap gap-3 justify-center md:justify-start pt-2">
+                <div className="flex flex-wrap gap-2 md:gap-3 justify-center md:justify-start pt-2 w-full md:w-auto">
                   <button
                     onClick={handleConvertCredits}
                     disabled={earnedCredits < 2 || converting}
-                    className="bg-black dark:bg-white hover:opacity-80 text-white dark:text-black px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-black dark:bg-white hover:opacity-80 text-white dark:text-black px-4 py-2 md:px-5 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed flex-1 md:flex-none min-w-[140px]"
                   >
-                    <RefreshCw className={`w-4 h-4 ${converting ? 'animate-spin' : ''}`} />
-                    Convert 2 Credits to $1
+                    <RefreshCw className={`w-3.5 h-3.5 md:w-4 md:h-4 ${converting ? 'animate-spin' : ''}`} />
+                    Convert 2 Cr to $1
                   </button>
                   
                   <button
                     onClick={() => setIsPayoutModalOpen(true)}
-                    className="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-black dark:text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2"
+                    className="bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-black dark:text-white px-4 py-2 md:px-5 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all flex items-center justify-center gap-2 flex-1 md:flex-none min-w-[120px]"
                   >
-                    <DollarSign className="w-4 h-4" />
-                    Withdraw Funds
+                    <DollarSign className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    Withdraw
                   </button>
                 </div>
               )}
             </div>
 
-            <div className="flex flex-col gap-3 min-w-[160px]">
-              <button onClick={handleSignOut} className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-gray-700 px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2">
-                <LogOut className="w-4 h-4" />
+            <div className="flex flex-col gap-3 w-full md:w-auto md:min-w-[160px] mt-4 md:mt-0">
+              <button onClick={handleSignOut} className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-gray-700 px-4 py-2 md:px-6 md:py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-xs md:text-sm w-full">
+                <LogOut className="w-3.5 h-3.5 md:w-4 md:h-4" />
                 Sign Out
               </button>
             </div>
@@ -433,56 +433,56 @@ const Profile = () => {
           {/* Affiliate Link Section (Full Width) */}
           {profile.creator_badge && (
               <div className="mt-8 pt-6 border-t border-slate-200 dark:border-gray-800">
-                  <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                      <LinkIcon className="w-4 h-4" /> Your Affiliate Link
+                  <h3 className="text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <LinkIcon className="w-3.5 h-3.5 md:w-4 md:h-4" /> Your Affiliate Link
                   </h3>
                   <div className="flex items-center gap-2 bg-white dark:bg-black p-2 rounded-xl border border-slate-200 dark:border-gray-800">
                       <input 
                           type="text" 
                           readOnly 
                           value={affiliateLink}
-                          className="flex-1 bg-transparent px-3 text-sm font-mono text-slate-600 dark:text-slate-300 outline-none truncate"
+                          className="flex-1 bg-transparent px-3 text-xs md:text-sm font-mono text-slate-600 dark:text-slate-300 outline-none truncate"
                       />
                       <button 
                           onClick={copyAffiliateLink}
-                          className="px-4 py-2 bg-slate-100 dark:bg-gray-800 hover:bg-slate-200 dark:hover:bg-gray-700 text-black dark:text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2"
+                          className="px-3 py-1.5 md:px-4 md:py-2 bg-slate-100 dark:bg-gray-800 hover:bg-slate-200 dark:hover:bg-gray-700 text-black dark:text-white rounded-lg text-[10px] md:text-xs font-bold transition-colors flex items-center gap-2"
                       >
                           {affiliateCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                           {affiliateCopied ? 'Copied' : 'Copy'}
                       </button>
                   </div>
-                  <p className="text-xs text-slate-400 mt-2">Share this link. When users upgrade to Pro, you earn 10 credits.</p>
+                  <p className="text-[10px] md:text-xs text-slate-400 mt-2">Share this link. When users upgrade to Pro, you earn 10 credits.</p>
               </div>
           )}
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-slate-200 dark:border-gray-800 mb-8 overflow-x-auto">
+        <div className="flex border-b border-slate-200 dark:border-gray-800 mb-8 overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveTab('prompts')}
-            className={`px-8 py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+            className={`px-6 md:px-8 py-3 md:py-4 font-bold text-xs md:text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'prompts' ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
-            <ImageIcon className="w-4 h-4" />
+            <ImageIcon className="w-3.5 h-3.5 md:w-4 md:h-4" />
             My Prompts
           </button>
           <button
             onClick={() => setActiveTab('favorites')}
-            className={`px-8 py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+            className={`px-6 md:px-8 py-3 md:py-4 font-bold text-xs md:text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'favorites' ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
-            <Star className="w-4 h-4" />
+            <Star className="w-3.5 h-3.5 md:w-4 md:h-4" />
             Favorites
           </button>
           <button
             onClick={() => setActiveTab('settings')}
-            className={`px-8 py-4 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
+            className={`px-6 md:px-8 py-3 md:py-4 font-bold text-xs md:text-sm flex items-center gap-2 border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'settings' ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
             }`}
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-3.5 h-3.5 md:w-4 md:h-4" />
             Settings
           </button>
         </div>
@@ -501,9 +501,9 @@ const Profile = () => {
                 </div>
               ) : (
                 <div className="text-center text-slate-400 py-16 bg-slate-50 dark:bg-gray-900 rounded-3xl border border-slate-100 dark:border-gray-800">
-                  <ImageIcon className="w-16 h-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
-                  <p className="text-lg font-medium text-slate-600 dark:text-slate-400">You haven't uploaded any prompts yet.</p>
-                  <Link to="/upload" className="text-black dark:text-white hover:underline font-bold mt-2 inline-block">
+                  <ImageIcon className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
+                  <p className="text-base md:text-lg font-medium text-slate-600 dark:text-slate-400">You haven't uploaded any prompts yet.</p>
+                  <Link to="/upload" className="text-black dark:text-white hover:underline font-bold mt-2 inline-block text-sm md:text-base">
                     Upload your first prompt
                   </Link>
                 </div>
@@ -521,9 +521,9 @@ const Profile = () => {
                 </div>
               ) : (
                 <div className="text-center text-slate-400 py-16 bg-slate-50 dark:bg-gray-900 rounded-3xl border border-slate-100 dark:border-gray-800">
-                  <Star className="w-16 h-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
-                  <p className="text-lg font-medium text-slate-600 dark:text-slate-400">No favorites yet.</p>
-                  <Link to="/prompts" className="text-black dark:text-white hover:underline font-bold mt-2 inline-block">
+                  <Star className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
+                  <p className="text-base md:text-lg font-medium text-slate-600 dark:text-slate-400">No favorites yet.</p>
+                  <Link to="/prompts" className="text-black dark:text-white hover:underline font-bold mt-2 inline-block text-sm md:text-base">
                     Browse prompts
                   </Link>
                 </div>
@@ -532,28 +532,28 @@ const Profile = () => {
           )}
           
           {activeTab === 'settings' && (
-            <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 border border-slate-200 dark:border-gray-800 shadow-sm max-w-2xl">
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-6">Account Settings</h3>
+            <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-gray-800 shadow-sm max-w-2xl">
+              <h3 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white mb-6">Account Settings</h3>
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-bold text-slate-500 dark:text-slate-400 mb-2">Email Address</label>
-                  <input type="text" value={user.email} disabled className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-4 py-3 text-slate-500 dark:text-slate-400 cursor-not-allowed font-medium" />
+                  <label className="block text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 mb-2">Email Address</label>
+                  <input type="text" value={user.email} disabled className="w-full bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-4 py-3 text-slate-500 dark:text-slate-400 cursor-not-allowed font-medium text-sm md:text-base" />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Display Name</label>
+                  <label className="block text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Display Name</label>
                   <input 
                     type="text" 
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     disabled={isAdmin}
-                    className="w-full bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent font-medium disabled:bg-slate-50 disabled:text-slate-500" 
+                    className="w-full bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white focus:border-transparent font-medium disabled:bg-slate-50 disabled:text-slate-500 text-sm md:text-base" 
                   />
                   {isAdmin && <p className="text-xs text-red-500 mt-1">Admin name cannot be changed.</p>}
                 </div>
                 <button 
                   onClick={handleSaveProfile}
                   disabled={savingProfile || isAdmin}
-                  className="bg-black dark:bg-white text-white dark:text-black px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-all disabled:opacity-50"
+                  className="bg-black dark:bg-white text-white dark:text-black px-6 md:px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-all disabled:opacity-50 text-sm md:text-base w-full md:w-auto"
                 >
                   {savingProfile ? 'Saving...' : 'Save Changes'}
                 </button>

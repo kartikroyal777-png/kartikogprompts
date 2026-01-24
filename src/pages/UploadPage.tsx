@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Image as ImageIcon, X, Loader2, Coins, Layers, Check, Box, Lock, Zap, Video, AlertCircle } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, Loader2, Coins, Layers, Check, Box, Lock, Zap, Video, AlertCircle, Shirt } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import imageCompression from 'browser-image-compression';
 import { useAuth } from '../context/AuthContext';
@@ -23,7 +23,10 @@ const UploadPage = () => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [promptTexts, setPromptTexts] = useState<string[]>(['']);
   const [promptType, setPromptType] = useState<'standard' | 'product' | 'super'>('standard');
-  const [isDragging, setIsDragging] = useState(false);
+  
+  // Drag states
+  const [isDraggingMain, setIsDraggingMain] = useState(false);
+  const [isDraggingInput, setIsDraggingInput] = useState(false);
 
   // Super Prompt specific fields
   const [superData, setSuperData] = useState({
@@ -36,6 +39,7 @@ const UploadPage = () => {
     description: '', 
     video_prompt: '',
     monetization_url: '',
+    outfit_link: '',
     credit_name: '',
     instagram_handle: '',
     is_paid: false,
@@ -56,7 +60,8 @@ const UploadPage = () => {
           const { data } = await supabase.from('super_prompt_categories').select('name, id');
           if (data) setCategories(data.map(c => c.name)); 
       } else {
-          const { data } = await supabase.from('categories').select('name').eq('type', promptType);
+          // Fetch main categories only (no parents)
+          const { data } = await supabase.from('categories').select('name').eq('type', promptType).is('parent_id', null);
           if (data) setCategories(data.map(c => c.name));
       }
     } catch (err) {
@@ -70,30 +75,36 @@ const UploadPage = () => {
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, isInputImage: boolean) => {
     e.preventDefault();
-    setIsDragging(true);
+    if (isInputImage) setIsDraggingInput(true);
+    else setIsDraggingMain(true);
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  const handleDragLeave = (e: React.DragEvent, isInputImage: boolean) => {
     e.preventDefault();
-    setIsDragging(false);
+    if (isInputImage) setIsDraggingInput(false);
+    else setIsDraggingMain(false);
   };
 
-  const handleDrop = async (e: React.DragEvent, isInputImage = false) => {
+  const handleDrop = async (e: React.DragEvent, isInputImage: boolean) => {
     e.preventDefault();
-    setIsDragging(false);
+    if (isInputImage) setIsDraggingInput(false);
+    else setIsDraggingMain(false);
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         await processFiles(Array.from(e.dataTransfer.files), isInputImage);
     }
   };
 
   const processFiles = async (fileList: File[], isInputImage: boolean) => {
+    // Updated Compression: Target ~100-150KB
     const compressionOptions = {
-        maxSizeMB: 0.05, // 50KB - Aggressive compression for input reference images
-        maxWidthOrHeight: 1024,
+        maxSizeMB: 0.15, 
+        maxWidthOrHeight: 1280, 
         useWebWorker: true,
-        fileType: 'image/jpeg'
+        fileType: 'image/jpeg',
+        initialQuality: 0.7 
     };
 
     const newFiles: File[] = [];
@@ -223,6 +234,7 @@ const UploadPage = () => {
           category: selectedCategories[0],
           categories: selectedCategories,
           monetization_url: formData.monetization_url,
+          outfit_link: formData.outfit_link, 
           credit_name: formData.credit_name || profile?.display_name,
           instagram_handle: formData.instagram_handle,
           is_published: true,
@@ -307,6 +319,23 @@ const UploadPage = () => {
                 </>
             )}
 
+            {/* Outfit Link (Standard Only) */}
+            {promptType === 'standard' && (
+                <div>
+                    <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white flex items-center gap-2">
+                        <Shirt className="w-4 h-4" /> Outfit Link (Optional)
+                    </label>
+                    <input 
+                        type="url" 
+                        placeholder="https://..." 
+                        value={formData.outfit_link} 
+                        onChange={e => setFormData({...formData, outfit_link: e.target.value})} 
+                        className="w-full p-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Link to the outfit shown in the prompt image.</p>
+                </div>
+            )}
+
             {/* Main Prompt Content */}
             <div>
                 <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">Prompt Content</label>
@@ -358,7 +387,7 @@ const UploadPage = () => {
             {/* Main Images - Drag and Drop */}
             <div>
                 <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">
-                    {promptType === 'super' ? 'Example Output Images (Optional)' : 'Main Images'} (Auto-compressed)
+                    {promptType === 'super' ? 'Example Output Images (Optional)' : 'Main Images'} (Auto-compressed ~150KB)
                 </label>
                 <div className="grid grid-cols-4 gap-4">
                     {previews.map((src, i) => (
@@ -370,17 +399,17 @@ const UploadPage = () => {
                     <label 
                         className={cn(
                             "aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all",
-                            isDragging 
+                            isDraggingMain 
                                 ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" 
                                 : "border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
                         )}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
+                        onDragOver={(e) => handleDragOver(e, false)}
+                        onDragLeave={(e) => handleDragLeave(e, false)}
                         onDrop={(e) => handleDrop(e, false)}
                     >
-                        <Upload className={cn("w-6 h-6 mb-2", isDragging ? "text-blue-500" : "text-gray-400")} />
-                        <span className={cn("text-xs font-bold", isDragging ? "text-blue-500" : "text-gray-400")}>
-                            {isDragging ? "Drop Here" : "Upload"}
+                        <Upload className={cn("w-6 h-6 mb-2", isDraggingMain ? "text-blue-500" : "text-gray-400")} />
+                        <span className={cn("text-xs font-bold", isDraggingMain ? "text-blue-500" : "text-gray-400")}>
+                            {isDraggingMain ? "Drop Here" : "Upload"}
                         </span>
                         <input type="file" hidden multiple accept="image/*" onChange={(e) => handleFileChange(e, false)} />
                     </label>
@@ -393,7 +422,7 @@ const UploadPage = () => {
                     <ImageIcon className="w-4 h-4" /> 
                     Input Image (Optional)
                     <span className="text-xs font-normal text-gray-500">
-                        {promptType === 'super' ? 'Reference images' : 'Single reference image'} (Compressed &lt;50KB)
+                        {promptType === 'super' ? 'Reference images' : 'Single reference image'} (Compressed ~150KB)
                     </span>
                 </label>
                 <div className="grid grid-cols-4 gap-4">
@@ -404,12 +433,20 @@ const UploadPage = () => {
                         </div>
                     ))}
                     <label 
-                        className="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                        className={cn(
+                            "aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all",
+                            isDraggingInput
+                                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" 
+                                : "border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        )}
+                        onDragOver={(e) => handleDragOver(e, true)}
+                        onDragLeave={(e) => handleDragLeave(e, true)}
                         onDrop={(e) => handleDrop(e, true)}
-                        onDragOver={handleDragOver}
                     >
-                        <Upload className="w-6 h-6 mb-2 text-gray-400" />
-                        <span className="text-xs font-bold text-gray-400">Upload Input</span>
+                        <Upload className={cn("w-6 h-6 mb-2", isDraggingInput ? "text-blue-500" : "text-gray-400")} />
+                        <span className={cn("text-xs font-bold", isDraggingInput ? "text-blue-500" : "text-gray-400")}>
+                            {isDraggingInput ? "Drop Here" : "Upload"}
+                        </span>
                         <input type="file" hidden multiple={promptType === 'super'} accept="image/*" onChange={(e) => handleFileChange(e, true)} />
                     </label>
                 </div>

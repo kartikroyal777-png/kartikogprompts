@@ -185,70 +185,72 @@ const Prompts = () => {
             </button>
           </div>
 
-          {/* Categories Multi-Select with Subcategories */}
-          <div className="flex flex-wrap justify-center gap-2">
-            <button
-              onClick={() => toggleCategory('All')}
-              className={cn(
-                "px-4 py-1.5 rounded-full text-sm font-medium transition-all border glow-button",
-                activeCategories.length === 0
-                  ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
-                  : "bg-transparent border-gray-200 dark:border-gray-800 text-gray-500 hover:text-black dark:hover:text-white"
-              )}
-            >
-              All
-            </button>
-            {categories.map((category) => {
-              const isActive = activeCategories.includes(category.name);
-              const hasSubcategories = category.subcategories && category.subcategories.length > 0;
-              const isHovered = hoveredCategory === category.id;
-
-              return (
-                <div 
-                    key={category.id} 
-                    className="relative group"
-                    onMouseEnter={() => setHoveredCategory(category.id)}
-                    onMouseLeave={() => setHoveredCategory(null)}
+          {/* Categories Multi-Select with Sliding Scroll (2 Rows) */}
+          <div className="w-full overflow-x-auto pb-4 scrollbar-hide">
+            <div className="grid grid-rows-2 grid-flow-col gap-2 px-2 min-w-max">
+                <button
+                onClick={() => toggleCategory('All')}
+                className={cn(
+                    "flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all border glow-button whitespace-nowrap h-fit",
+                    activeCategories.length === 0
+                    ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
+                    : "bg-transparent border-gray-200 dark:border-gray-800 text-gray-500 hover:text-black dark:hover:text-white"
+                )}
                 >
-                    <button
-                    onClick={() => toggleCategory(category.name)}
-                    className={cn(
-                        "px-4 py-1.5 rounded-full text-sm font-medium transition-all border flex items-center gap-1.5 glow-button",
-                        isActive
-                        ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
-                        : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    )}
-                    >
-                    {isActive && <Check className="w-3 h-3" />}
-                    {category.name}
-                    {hasSubcategories && <ChevronDown className="w-3 h-3 opacity-50" />}
-                    </button>
+                All
+                </button>
+                {categories.map((category) => {
+                const isActive = activeCategories.includes(category.name);
+                const hasSubcategories = category.subcategories && category.subcategories.length > 0;
+                const isHovered = hoveredCategory === category.id;
 
-                    {/* Subcategories Dropdown */}
-                    {hasSubcategories && isHovered && (
-                        <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-800 p-2 z-50 animate-in fade-in slide-in-from-top-2">
-                            {category.subcategories?.map(sub => (
-                                <button
-                                    key={sub.id}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleCategory(sub.name);
-                                    }}
-                                    className={cn(
-                                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
-                                        activeCategories.includes(sub.name)
-                                            ? "bg-gray-100 dark:bg-gray-800 text-black dark:text-white font-bold"
-                                            : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-black dark:hover:text-white"
-                                    )}
-                                >
-                                    {sub.name}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
-              );
-            })}
+                return (
+                    <div 
+                        key={category.id} 
+                        className="relative group flex-shrink-0 h-fit"
+                        onMouseEnter={() => setHoveredCategory(category.id)}
+                        onMouseLeave={() => setHoveredCategory(null)}
+                    >
+                        <button
+                        onClick={() => toggleCategory(category.name)}
+                        className={cn(
+                            "px-4 py-1.5 rounded-full text-sm font-medium transition-all border flex items-center gap-1.5 glow-button whitespace-nowrap w-full justify-center",
+                            isActive
+                            ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
+                            : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        )}
+                        >
+                        {isActive && <Check className="w-3 h-3" />}
+                        {category.name}
+                        {hasSubcategories && <ChevronDown className="w-3 h-3 opacity-50" />}
+                        </button>
+
+                        {/* Subcategories Dropdown */}
+                        {hasSubcategories && isHovered && (
+                            <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-800 p-2 z-50 animate-in fade-in slide-in-from-top-2">
+                                {category.subcategories?.map(sub => (
+                                    <button
+                                        key={sub.id}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleCategory(sub.name);
+                                        }}
+                                        className={cn(
+                                            "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                                            activeCategories.includes(sub.name)
+                                                ? "bg-gray-100 dark:bg-gray-800 text-black dark:text-white font-bold"
+                                                : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-black dark:hover:text-white"
+                                        )}
+                                    >
+                                        {sub.name}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+                })}
+            </div>
           </div>
         </div>
 

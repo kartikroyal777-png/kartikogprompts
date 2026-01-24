@@ -32,11 +32,11 @@ export interface Prompt {
   title: string;
   description: string;
   full_text?: string;
-  video_prompt?: string;
+  video_prompt?: string; // New
   price_credits?: number;
   images: string[];
   image: string;
-  input_image?: string; // New field
+  input_image?: string; // New
   tags?: string[];
   author: string;
   creator_id?: string;
@@ -50,6 +50,7 @@ export interface Prompt {
   is_bundle?: boolean;
   monetization_url?: string;
   instagram_handle?: string;
+  outfit_link?: string; // New
   prompt_type: 'standard' | 'product';
 }
 
@@ -69,7 +70,7 @@ export interface SuperPrompt {
   prompt_content: string;
   how_to_use: string;
   example_output_images: string[];
-  example_input_images?: string[]; // New field
+  example_input_images?: string[]; // New
   is_premium: boolean;
   created_at: string;
   likes_count: number;
@@ -115,8 +116,8 @@ export interface CategoryItem {
   id: string;
   name: string;
   type: string;
-  parent_id?: string | null;
-  subcategories?: CategoryItem[];
+  parent_id?: string | null; // New
+  subcategories?: CategoryItem[]; // For UI structure
 }
 
 export interface PayoutRequest {
@@ -142,7 +143,34 @@ export interface EarningEntry {
   prompt_title: string;
 }
 
-// Image to JSON Types
+export interface RateMeEntry {
+  id: string;
+  user_id: string;
+  image_url: string;
+  gender: 'Men' | 'Women';
+  parameters: any;
+  final_score: number;
+  is_published: boolean;
+  player_name?: string;
+  social_links?: { instagram?: string; twitter?: string };
+  user_profile?: { full_name?: string; avatar_url?: string };
+}
+
+export interface RateMeParameters {
+  face?: number;
+  symmetry?: number;
+  jawline?: number;
+  cheekbones?: number;
+  eyes?: number;
+  canthal_tilt?: number;
+  nose?: number;
+  skin?: number;
+  outfit?: number;
+  overall?: number;
+  roast?: string;
+  toast?: string;
+}
+
 export interface ImageAnalysisResult {
   metadata: {
     confidence_score: string;

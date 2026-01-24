@@ -181,33 +181,35 @@ const ProductPrompts = () => {
             </button>
           </div>
 
-          {/* Categories */}
-          <div className="flex flex-wrap gap-2 justify-center">
-            <button
-              onClick={() => toggleCategory('All')}
-              className={cn(
-                "px-4 py-2 rounded-full text-sm font-bold border transition-all glow-button",
-                activeCategories.length === 0
-                  ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
-                  : "bg-transparent border-gray-200 dark:border-gray-800 text-gray-500 hover:text-black dark:hover:text-white"
-              )}
-            >
-              All
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => toggleCategory(cat)}
+          {/* Categories - Sliding Scroll (2 Rows) */}
+          <div className="w-full overflow-x-auto pb-4 scrollbar-hide">
+            <div className="grid grid-rows-2 grid-flow-col gap-2 px-2 min-w-max">
+                <button
+                onClick={() => toggleCategory('All')}
                 className={cn(
-                  "px-4 py-2 rounded-full text-sm font-bold border transition-all glow-button",
-                  activeCategories.includes(cat)
+                    "flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-all glow-button whitespace-nowrap h-fit",
+                    activeCategories.length === 0
                     ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
                     : "bg-transparent border-gray-200 dark:border-gray-800 text-gray-500 hover:text-black dark:hover:text-white"
                 )}
-              >
-                {cat}
-              </button>
-            ))}
+                >
+                All
+                </button>
+                {categories.map((cat) => (
+                <button
+                    key={cat}
+                    onClick={() => toggleCategory(cat)}
+                    className={cn(
+                    "flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-all glow-button whitespace-nowrap h-fit",
+                    activeCategories.includes(cat)
+                        ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
+                        : "bg-transparent border-gray-200 dark:border-gray-800 text-gray-500 hover:text-black dark:hover:text-white"
+                    )}
+                >
+                    {cat}
+                </button>
+                ))}
+            </div>
           </div>
         </div>
 

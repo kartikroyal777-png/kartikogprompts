@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Heart, Share2, Copy, Check, Instagram, ArrowLeft, ExternalLink, Video, Lock, Unlock, Sparkles, Layers, Crown, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Heart, Share2, Copy, Check, Instagram, ArrowLeft, ExternalLink, Video, Lock, Unlock, Sparkles, Layers, Crown, Image as ImageIcon, Loader2, Shirt } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Prompt } from '../types';
 import { getIsLiked, toggleLike } from '../lib/likes';
@@ -133,7 +133,8 @@ const PromptDetail = () => {
         is_paid: p.is_paid,
         price_credits: p.price_credits,
         is_bundle: p.is_bundle,
-        prompt_type: p.prompt_type
+        prompt_type: p.prompt_type,
+        outfit_link: p.outfit_link // Include outfit link
       };
 
       setPrompt(promptData);
@@ -330,6 +331,27 @@ const PromptDetail = () => {
               </div>
             </Link>
           </div>
+
+          {/* Outfit Link Section (Above Main Content) */}
+          {prompt.outfit_link && (
+            <a 
+              href={prompt.outfit_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block p-4 bg-gradient-to-r from-pink-500/10 to-purple-500/10 border border-pink-500/20 rounded-2xl hover:border-pink-500/40 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-pink-500/20 rounded-lg text-pink-600 dark:text-pink-400">
+                  <Shirt className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm">Shop This Outfit</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Click to view the items in this prompt</p>
+                </div>
+                <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-pink-500 transition-colors" />
+              </div>
+            </a>
+          )}
 
           {/* Main Prompt Box */}
           <div className="bg-slate-50 dark:bg-gray-900 rounded-3xl border border-slate-200 dark:border-gray-800 p-6 md:p-8 relative group shadow-sm overflow-hidden">

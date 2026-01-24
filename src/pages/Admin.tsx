@@ -66,6 +66,7 @@ export default function Admin() {
         setItems(allCats);
         
         // Filter for parent dropdown (only standard/product types usually have subcategories in this context)
+        // Only allow categories that DON'T have a parent to be parents (1 level deep for simplicity)
         setAvailableParents(formattedStd.filter(c => !c.parent_id));
         
       } else if (activeTab === 'requests') {

@@ -88,7 +88,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // FIX: Using a synchronous wrapper for the async logic inside setTimeout
     const delayDebounceFn = setTimeout(() => {
       const performSearch = async () => {
         if (searchQuery.trim().length >= 2) {
@@ -235,26 +234,27 @@ export default function Home() {
             </div>
         </div>
 
-        <div className="relative z-30 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 lg:pt-40 pb-24 text-center">
-          <div className="space-y-8 max-w-4xl mx-auto">
+        <div className="relative z-30 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 lg:pt-40 pb-20 text-center">
+          <div className="space-y-6 lg:space-y-8 max-w-4xl mx-auto">
             <div className="flex justify-center">
-              <span className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold bg-gray-100 dark:bg-gray-900 text-black dark:text-white border border-gray-200 dark:border-gray-800 shadow-sm">
-                <Sparkles className="w-4 h-4 mr-2 text-black dark:text-white" />
-                The Ultimate Free Prompt Library
+              <span className="inline-flex items-center px-3 py-1 lg:px-4 lg:py-1.5 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-900 text-black dark:text-white border border-gray-200 dark:border-gray-800 shadow-sm">
+                <Sparkles className="w-3 h-3 lg:w-4 lg:h-4 mr-2 text-black dark:text-white" />
+                #1 Platform for Prompts
               </span>
             </div>
             
-            <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-black dark:text-white leading-[1.1]">
-              Unlock the full potential of <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-500 to-black dark:from-gray-400 dark:to-white">AI Tools</span>
+            <h1 className="text-3xl sm:text-4xl md:text-7xl font-black tracking-tighter leading-[1.1] sm:leading-[1.1]">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-gray-600 to-gray-900 dark:from-white dark:via-gray-400 dark:to-white">
+                The Ultimate Freemium Prompt Marketplace & Library
+              </span>
             </h1>
             
-            <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-sm sm:text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed px-2">
               Discover the best AI prompts for Gemini & ChatGPT to supercharge your Personality, business and boost your productivity.
             </p>
 
             {/* Search */}
-            <div ref={searchRef} className="max-w-md mx-auto relative z-50">
+            <div ref={searchRef} className="max-w-md mx-auto relative z-50 pt-2">
               <div className="relative group rounded-full transition-all duration-300 focus-within:ring-2 focus-within:ring-white focus-within:shadow-[0_0_20px_rgba(255,255,255,0.5)] bg-white dark:bg-gray-900 shadow-lg">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   {isSearching ? <Loader2 className="h-5 w-5 text-gray-400 animate-spin" /> : <Search className="h-5 w-5 text-gray-400" />}
@@ -264,7 +264,7 @@ export default function Home() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => { if(searchQuery.length >= 2) setShowResults(true); }}
-                  className="block w-full pl-11 pr-4 py-4 bg-transparent text-black dark:text-white rounded-full focus:outline-none transition-all placeholder-gray-400 font-medium"
+                  className="block w-full pl-11 pr-4 py-3 lg:py-4 bg-transparent text-black dark:text-white rounded-full focus:outline-none transition-all placeholder-gray-400 font-medium text-sm lg:text-base"
                   placeholder="Search any prompt..."
                 />
               </div>

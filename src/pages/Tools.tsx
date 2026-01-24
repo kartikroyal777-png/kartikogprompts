@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, MessageSquare, BookOpen, Copy, Check, Loader2, Lock, ArrowRight } from 'lucide-react';
+import { Sparkles, MessageSquare, BookOpen, Copy, Check, Loader2, Lock, ArrowRight, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { enhancePrompt } from '../lib/gemini';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import DotGrid from '../components/DotGrid';
 import { Link, useNavigate } from 'react-router-dom';
 import imageCompression from 'browser-image-compression';
+import { cn } from '../lib/utils';
 
 export default function Tools() {
   const { user, isPro } = useAuth();
@@ -28,6 +29,7 @@ export default function Tools() {
   const [requestImage, setRequestImage] = useState<File | null>(null);
   const [requestImagePreview, setRequestImagePreview] = useState<string | null>(null);
   const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Updated Book Cover
   const BOOK_COVER_URL = "https://cdn.phototourl.com/uploads/2026-01-16-3c469bae-6e25-4d7a-a332-fdd7e876d267.jpg";
@@ -83,6 +85,30 @@ export default function Tools() {
       const file = e.target.files[0];
       setRequestImage(file);
       setRequestImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        const file = e.dataTransfer.files[0];
+        if (file.type.startsWith('image/')) {
+            setRequestImage(file);
+            setRequestImagePreview(URL.createObjectURL(file));
+        } else {
+            toast.error("Please upload an image file.");
+        }
     }
   };
 
@@ -242,27 +268,39 @@ export default function Tools() {
                             />
                         </div>
                         
-                        {/* Image Upload */}
+                        {/* Image Upload with Drag & Drop */}
                         <div>
                             <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
                                 Reference Image (Optional)
                             </label>
-                            <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-black dark:hover:border-white transition-colors bg-gray-50 dark:bg-black group">
+                            <label 
+                                className={cn(
+                                    "relative aspect-video rounded-xl overflow-hidden border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all bg-gray-50 dark:bg-black group",
+                                    isDragging 
+                                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" 
+                                        : "border-gray-300 dark:border-gray-700 hover:border-black dark:hover:border-white"
+                                )}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                            >
                                 {requestImagePreview ? (
                                     <>
                                         <img src={requestImagePreview} alt="Reference" className="w-full h-full object-cover" />
                                         <button 
                                             type="button"
-                                            onClick={() => { setRequestImage(null); setRequestImagePreview(null); }}
-                                            className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={(e) => { e.preventDefault(); setRequestImage(null); setRequestImagePreview(null); }}
+                                            className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
                                         >
                                             <div className="w-4 h-4 flex items-center justify-center font-bold">×</div>
                                         </button>
                                     </>
                                 ) : (
                                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
-                                        <Sparkles className="w-8 h-8 mb-2" />
-                                        <span className="text-xs font-bold">Upload Reference</span>
+                                        <Upload className={cn("w-8 h-8 mb-2", isDragging ? "text-blue-500" : "text-gray-400")} />
+                                        <span className={cn("text-xs font-bold", isDragging ? "text-blue-500" : "text-gray-400")}>
+                                            {isDragging ? "Drop Here" : "Upload Reference"}
+                                        </span>
                                     </div>
                                 )}
                                 <input 
@@ -271,7 +309,7 @@ export default function Tools() {
                                     onChange={handleRequestImageChange}
                                     className="absolute inset-0 opacity-0 cursor-pointer"
                                 />
-                            </div>
+                            </label>
                         </div>
 
                         {isPro ? (

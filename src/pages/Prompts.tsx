@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Lock, Sparkles, Heart, Check } from 'lucide-react';
+import { Search, Lock, Sparkles, Heart, Check, ChevronDown } from 'lucide-react';
 import PromptCard from '../components/PromptCard';
-import { Prompt } from '../types';
+import { Prompt, CategoryItem } from '../types';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { getImageUrl } from '../lib/utils';
@@ -10,10 +10,13 @@ const Prompts = () => {
   const [activeCategories, setActiveCategories] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPremiumOnly, setShowPremiumOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'latest' | 'likes'>('latest');
+  
+  // Hover state for subcategories
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCategories();
@@ -25,27 +28,40 @@ const Prompts = () => {
 
   const fetchCategories = async () => {
     try {
-      const { data, error } = await supabase.from('categories').select('name').eq('type', 'standard').order('name');
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('type', 'standard')
+        .order('name');
+      
       if (error) throw error;
+      
       if (data && data.length > 0) {
-        setCategories(data.map(c => c.name));
-      } else {
-        setCategories(['Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape']);
+        // Build hierarchy
+        const parents = data.filter(c => !c.parent_id);
+        const children = data.filter(c => c.parent_id);
+        
+        const structured = parents.map(p => ({
+            ...p,
+            subcategories: children.filter(c => c.parent_id === p.id)
+        }));
+        
+        setCategories(structured);
       }
     } catch (err) {
-      setCategories(['Couple', 'Kids', 'Men', 'Women', 'Animals', 'Landscape']);
+      console.error(err);
     }
   };
 
-  const toggleCategory = (category: string) => {
-    if (category === 'All') {
+  const toggleCategory = (categoryName: string) => {
+    if (categoryName === 'All') {
       setActiveCategories([]);
       return;
     }
     setActiveCategories(prev => 
-      prev.includes(category) 
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
+      prev.includes(categoryName) 
+        ? prev.filter(c => c !== categoryName)
+        : [...prev, categoryName]
     );
   };
 
@@ -76,11 +92,8 @@ const Prompts = () => {
       if (error) throw error;
 
       const formattedPrompts: Prompt[] = (data || []).map((p: any) => {
-         // Robustly check for images in either alias or direct property
          const rawImages = p.prompt_images || p.images || [];
-         
          const imagesList = rawImages.map((img: any) => getImageUrl(img.storage_path));
-
         let imageUrl = imagesList[0];
         if (!imageUrl) {
            imageUrl = getImageUrl(p.image);
@@ -172,7 +185,7 @@ const Prompts = () => {
             </button>
           </div>
 
-          {/* Categories Multi-Select */}
+          {/* Categories Multi-Select with Subcategories */}
           <div className="flex flex-wrap justify-center gap-2">
             <button
               onClick={() => toggleCategory('All')}
@@ -180,27 +193,60 @@ const Prompts = () => {
                 "px-4 py-1.5 rounded-full text-sm font-medium transition-all border glow-button",
                 activeCategories.length === 0
                   ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
-                  : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  : "bg-transparent border-gray-200 dark:border-gray-800 text-gray-500 hover:text-black dark:hover:text-white"
               )}
             >
               All
             </button>
             {categories.map((category) => {
-              const isActive = activeCategories.includes(category);
+              const isActive = activeCategories.includes(category.name);
+              const hasSubcategories = category.subcategories && category.subcategories.length > 0;
+              const isHovered = hoveredCategory === category.id;
+
               return (
-                <button
-                  key={category}
-                  onClick={() => toggleCategory(category)}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full text-sm font-medium transition-all border flex items-center gap-1.5 glow-button",
-                    isActive
-                      ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
-                      : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  )}
+                <div 
+                    key={category.id} 
+                    className="relative group"
+                    onMouseEnter={() => setHoveredCategory(category.id)}
+                    onMouseLeave={() => setHoveredCategory(null)}
                 >
-                  {isActive && <Check className="w-3 h-3" />}
-                  {category}
-                </button>
+                    <button
+                    onClick={() => toggleCategory(category.name)}
+                    className={cn(
+                        "px-4 py-1.5 rounded-full text-sm font-medium transition-all border flex items-center gap-1.5 glow-button",
+                        isActive
+                        ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
+                        : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    )}
+                    >
+                    {isActive && <Check className="w-3 h-3" />}
+                    {category.name}
+                    {hasSubcategories && <ChevronDown className="w-3 h-3 opacity-50" />}
+                    </button>
+
+                    {/* Subcategories Dropdown */}
+                    {hasSubcategories && isHovered && (
+                        <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-800 p-2 z-50 animate-in fade-in slide-in-from-top-2">
+                            {category.subcategories?.map(sub => (
+                                <button
+                                    key={sub.id}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleCategory(sub.name);
+                                    }}
+                                    className={cn(
+                                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                                        activeCategories.includes(sub.name)
+                                            ? "bg-gray-100 dark:bg-gray-800 text-black dark:text-white font-bold"
+                                            : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-black dark:hover:text-white"
+                                    )}
+                                >
+                                    {sub.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
               );
             })}
           </div>

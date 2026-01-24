@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Heart, Share2, Copy, Check, Instagram, ArrowLeft, ExternalLink, Video, Lock, Unlock, Sparkles, Layers, Crown } from 'lucide-react';
+import { Heart, Share2, Copy, Check, Instagram, ArrowLeft, ExternalLink, Video, Lock, Unlock, Sparkles, Layers, Crown, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Prompt } from '../types';
 import { getIsLiked, toggleLike } from '../lib/likes';
@@ -22,7 +22,7 @@ interface BundleItem {
 const PromptDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, wallet, refreshProfile } = useAuth();
+  const { user, wallet, refreshProfile, isPro } = useAuth();
   
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [fullText, setFullText] = useState<string | null>(null);
@@ -82,6 +82,9 @@ const PromptDetail = () => {
         if (p.creator_id === user.id) unlocked = true;
       }
 
+      // Pro users always unlock standard prompts
+      if (isPro) unlocked = true;
+
       setIsUnlocked(unlocked);
 
       let textContent = p.description;
@@ -124,6 +127,7 @@ const PromptDetail = () => {
         likes: p.likes_count || 0,
         image: primaryImage,
         images: imagesList.length > 0 ? imagesList : [primaryImage],
+        input_image: p.input_image ? getImageUrl(p.input_image) : undefined,
         monetization_url: p.monetization_url,
         instagram_handle: p.instagram_handle,
         is_paid: p.is_paid,
@@ -144,11 +148,6 @@ const PromptDetail = () => {
     }
   };
 
-  const handleUnlockClick = () => {
-    // Redirect to pricing page for Pro membership
-    navigate('/pricing');
-  };
-
   const confirmUnlock = async () => {
     if (!prompt || !user) return;
     setUnlocking(true);
@@ -159,10 +158,10 @@ const PromptDetail = () => {
       await refreshProfile();
       await fetchPromptDetail();
       setShowUnlockModal(false);
-      alert("Prompt unlocked successfully!");
+      toast.success("Prompt unlocked successfully!");
     } catch (error: any) {
       console.error("Unlock failed", error);
-      alert("Unlock failed: " + error.message);
+      toast.error("Unlock failed: " + error.message);
     } finally {
       setUnlocking(false);
     }
@@ -192,42 +191,11 @@ const PromptDetail = () => {
         toast.success("Copied to clipboard!");
     };
 
-    // Try modern API first
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(onSuccess).catch(err => {
             console.error("Clipboard write failed", err);
-            fallbackCopy(text, onSuccess);
         });
-    } else {
-        fallbackCopy(text, onSuccess);
     }
-  };
-
-  const fallbackCopy = (text: string, onSuccess: () => void) => {
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      
-      // Ensure it's not visible but part of the DOM
-      textArea.style.opacity = "0";
-      textArea.style.pointerEvents = "none";
-      textArea.style.position = "fixed";
-      textArea.style.left = "0";
-      textArea.style.top = "0";
-      document.body.appendChild(textArea);
-      
-      textArea.focus();
-      textArea.select();
-      
-      try {
-          const successful = document.execCommand('copy');
-          if (successful) onSuccess();
-          else toast.error("Failed to copy");
-      } catch (err) {
-          console.error('Fallback copy failed', err);
-          toast.error("Failed to copy");
-      }
-      
-      document.body.removeChild(textArea);
   };
 
   const handleVideoCopy = () => {
@@ -237,25 +205,29 @@ const PromptDetail = () => {
     setTimeout(() => setVideoCopied(false), 2000);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center dark:bg-black dark:text-white"><div className="animate-pulse">Loading...</div></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center dark:bg-black dark:text-white"><Loader2 className="animate-spin w-8 h-8" /></div>;
   if (!prompt) return <div className="min-h-screen flex items-center justify-center dark:bg-black dark:text-white">Prompt not found</div>;
 
   const imagesToDisplay = prompt.images && prompt.images.length > 0 ? prompt.images : [prompt.image];
+
+  // Video Prompt Unlock Logic: "Premium Always" -> Only Pro users see it
+  const canViewVideoPrompt = isPro; 
+  const videoUnlockLink = `/pricing${prompt.creator_id ? `?ref=${prompt.creator_id}` : ''}`;
 
   return (
     <div className="min-h-screen bg-white dark:bg-black pb-24 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 pt-28">
         <button 
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white transition-colors font-medium"
+          className="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white transition-colors font-medium mb-6"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Prompts
         </button>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-        {/* Left: Image */}
+      <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+        {/* Left Column: Images & Actions */}
         <div className="space-y-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -265,6 +237,24 @@ const PromptDetail = () => {
             <ImageCarousel images={imagesToDisplay} alt={prompt.title} />
           </motion.div>
           
+          {/* Input Image Display (Small, Responsive) */}
+          {prompt.input_image && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-slate-50 dark:bg-gray-900 p-4 rounded-2xl border border-slate-200 dark:border-gray-800"
+              >
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <ImageIcon className="w-3 h-3" /> Input Reference
+                  </h4>
+                  <div className="w-24 h-24 md:w-32 md:h-32 rounded-xl overflow-hidden bg-gray-200 dark:bg-black border border-gray-200 dark:border-gray-700 relative group cursor-zoom-in" onClick={() => window.open(prompt.input_image, '_blank')}>
+                      <img src={prompt.input_image} alt="Input Reference" className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                  </div>
+              </motion.div>
+          )}
+
           <div className="flex gap-4">
             <motion.button 
               whileTap={{ scale: 0.95 }}
@@ -290,7 +280,7 @@ const PromptDetail = () => {
           </div>
         </div>
 
-        {/* Right: Details */}
+        {/* Right Column: Details & Prompts */}
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -341,7 +331,7 @@ const PromptDetail = () => {
             </Link>
           </div>
 
-          {/* Prompt Box */}
+          {/* Main Prompt Box */}
           <div className="bg-slate-50 dark:bg-gray-900 rounded-3xl border border-slate-200 dark:border-gray-800 p-6 md:p-8 relative group shadow-sm overflow-hidden">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
@@ -370,6 +360,16 @@ const PromptDetail = () => {
                     <Lock className="w-12 h-12 text-slate-400 mb-4" />
                     
                     <div className="flex flex-col gap-3 w-full max-w-xs">
+                      {prompt.price_credits > 0 && (
+                        <button
+                          onClick={() => setShowUnlockModal(true)}
+                          className="px-6 py-3 bg-white dark:bg-black text-black dark:text-white font-bold rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900 transition-all flex items-center justify-center gap-2"
+                        >
+                          <Unlock className="w-5 h-5" />
+                          Unlock ({prompt.price_credits} Credits)
+                        </button>
+                      )}
+                      
                       <Link
                         to="/pricing"
                         className="px-6 py-3 bg-black dark:bg-white hover:opacity-80 text-white dark:text-black font-bold rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
@@ -377,8 +377,6 @@ const PromptDetail = () => {
                         <Crown className="w-5 h-5" />
                         Unlock for Pro Member
                       </Link>
-                      
-                      {/* Removed Unlock All From Creator Button */}
                     </div>
                   </div>
                 </div>
@@ -415,25 +413,49 @@ const PromptDetail = () => {
             </div>
           </div>
 
-          {/* Video Prompt Box */}
-          {prompt.video_prompt && isUnlocked && (
-            <div className="bg-slate-50 dark:bg-gray-900 rounded-3xl border border-slate-200 dark:border-gray-800 p-6 md:p-8 relative group shadow-sm">
+          {/* Video Prompt Box (Premium Always Logic) */}
+          {prompt.video_prompt && (
+            <div className="bg-slate-50 dark:bg-gray-900 rounded-3xl border border-slate-200 dark:border-gray-800 p-6 md:p-8 relative group shadow-sm overflow-hidden">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <Video className="w-4 h-4 text-black dark:text-white" />
                   Video Prompt
                 </h3>
-                <button
-                  onClick={handleVideoCopy}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-black border border-slate-200 dark:border-gray-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white transition-colors"
-                >
-                  {videoCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                  {videoCopied ? 'Copied!' : 'Copy Text'}
-                </button>
+                {canViewVideoPrompt && (
+                    <button
+                    onClick={handleVideoCopy}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-black border border-slate-200 dark:border-gray-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-black dark:hover:text-white transition-colors"
+                    >
+                    {videoCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                    {videoCopied ? 'Copied!' : 'Copy Text'}
+                    </button>
+                )}
               </div>
-              <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-lg whitespace-pre-wrap font-medium">
-                {prompt.video_prompt}
-              </p>
+              
+              <div className="relative">
+                  {canViewVideoPrompt ? (
+                      <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-lg whitespace-pre-wrap font-medium">
+                        {prompt.video_prompt}
+                      </p>
+                  ) : (
+                      <div className="relative">
+                          <p className="text-slate-800 dark:text-slate-200 leading-relaxed text-lg whitespace-pre-wrap font-medium blur-md select-none opacity-50">
+                            {prompt.video_prompt || "This video prompt is locked. Unlock to view."}
+                          </p>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 p-4 text-center">
+                            <Lock className="w-10 h-10 text-amber-500 mb-3" />
+                            <p className="text-sm font-bold text-slate-900 dark:text-white mb-3">Premium Video Prompt</p>
+                            <Link
+                                to={videoUnlockLink}
+                                className="px-6 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 text-sm"
+                            >
+                                <Crown className="w-4 h-4" />
+                                Unlock with Pro
+                            </Link>
+                          </div>
+                      </div>
+                  )}
+              </div>
             </div>
           )}
 

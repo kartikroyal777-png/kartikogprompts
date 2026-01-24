@@ -133,11 +133,11 @@ const ImageToJson = () => {
     // Deduct Credit & Generate
     setProcessingPayment(true);
     try {
-      // Use standard parameter names matching database function signature
+      // Use p_ prefix to match the database function signature exactly
       const { data, error } = await supabase.rpc('deduct_credits', {
-        user_id: user.id,
-        amount: 1,
-        description: 'Image to JSON Generation'
+        p_user_id: user.id,
+        p_amount: 1,
+        p_description: 'Image to JSON Generation'
       });
 
       if (error) throw error;
@@ -155,21 +155,6 @@ const ImageToJson = () => {
 
     } catch (error: any) {
       console.error('Payment error:', error);
-      // Fallback: If RPC failed due to parameter mismatch, try p_ prefix
-      if (error.message?.includes('function') || error.message?.includes('argument')) {
-          try {
-             const { error: retryError } = await supabase.rpc('deduct_credits', {
-                p_user_id: user.id,
-                p_amount: 1,
-                p_description: 'Image to JSON Generation'
-             });
-             if (!retryError) {
-                 await refreshProfile();
-                 await processGeneration();
-                 return;
-             }
-          } catch (e) { /* ignore fallback error */ }
-      }
       toast.error("Failed to process credit deduction: " + error.message);
     } finally {
       setProcessingPayment(false);
@@ -185,7 +170,7 @@ const ImageToJson = () => {
       await navigator.clipboard.writeText(text);
       success = true;
     } catch (err) {
-      // Fallback for restricted environments (fixes NotAllowedError)
+      // Fallback for restricted environments
       const textArea = document.createElement("textarea");
       textArea.value = text;
       textArea.style.position = "fixed";

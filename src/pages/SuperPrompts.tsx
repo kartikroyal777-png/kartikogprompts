@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Zap, ChevronRight, ArrowLeft, Copy, Check, Loader2, TrendingUp, BarChart, User, ShoppingBag, Percent, GraduationCap, PenTool, Briefcase, Megaphone, Lock, Heart, Info, Play, Star, Crown } from 'lucide-react';
+import { Zap, ChevronRight, ArrowLeft, Copy, Check, Loader2, TrendingUp, BarChart, User, ShoppingBag, Percent, GraduationCap, PenTool, Briefcase, Megaphone, Lock, Heart, Info, Play, Star, Crown, Image as ImageIcon } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SuperPromptCategory, SuperPrompt } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -310,19 +310,34 @@ export default function SuperPrompts() {
                         </div>
                     </section>
 
-                    {/* 4. Example Output */}
-                    {selectedPrompt.example_output_images && selectedPrompt.example_output_images.length > 0 && (
-                        <section>
-                            <h3 className="text-sm font-bold uppercase text-slate-400 mb-4 flex items-center gap-2">
-                                <Star className="w-4 h-4" /> Example Output
-                            </h3>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {selectedPrompt.example_output_images.map((img, i) => (
-                                    <img key={i} src={img} alt="Output" className="rounded-xl border border-gray-200 dark:border-gray-800 w-full h-auto shadow-md hover:scale-[1.02] transition-transform" />
-                                ))}
-                            </div>
-                        </section>
-                    )}
+                    {/* 4. Example Output & Input */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {selectedPrompt.example_input_images && selectedPrompt.example_input_images.length > 0 && (
+                            <section>
+                                <h3 className="text-sm font-bold uppercase text-slate-400 mb-4 flex items-center gap-2">
+                                    <ImageIcon className="w-4 h-4" /> Input Reference
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {selectedPrompt.example_input_images.map((img, i) => (
+                                        <img key={i} src={img} alt="Input" className="rounded-xl border border-gray-200 dark:border-gray-800 w-full h-auto shadow-md hover:scale-[1.02] transition-transform" />
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
+                        {selectedPrompt.example_output_images && selectedPrompt.example_output_images.length > 0 && (
+                            <section>
+                                <h3 className="text-sm font-bold uppercase text-slate-400 mb-4 flex items-center gap-2">
+                                    <Star className="w-4 h-4" /> Example Output
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {selectedPrompt.example_output_images.map((img, i) => (
+                                        <img key={i} src={img} alt="Output" className="rounded-xl border border-gray-200 dark:border-gray-800 w-full h-auto shadow-md hover:scale-[1.02] transition-transform" />
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+                    </div>
                 </div>
             </div>
         )}

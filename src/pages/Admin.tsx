@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Lock, Search, Trash2, Plus, Box, Image as ImageIcon, MessageSquare, ExternalLink, Check, X, Filter, Mail, Clock, Send, Zap } from 'lucide-react';
+import { Shield, Lock, Search, Trash2, Plus, Box, Image as ImageIcon, MessageSquare, ExternalLink, Check, X, Filter, Mail, Clock, Send, Zap, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getImageUrl } from '../lib/utils';
 import toast from 'react-hot-toast';
+import { CategoryItem } from '../types';
 
 const ADMIN_PASSWORD = 'KARTIK#1234567';
 
@@ -14,8 +15,13 @@ export default function Admin() {
   // Data States
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Category Management
   const [newItemName, setNewItemName] = useState('');
   const [categoryType, setCategoryType] = useState<'standard' | 'product' | 'super'>('standard');
+  const [selectedParentId, setSelectedParentId] = useState<string>('');
+  const [availableParents, setAvailableParents] = useState<CategoryItem[]>([]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [requestFilter, setRequestFilter] = useState<'all' | 'pending' | 'completed' | 'rejected'>('all');
   
@@ -49,14 +55,18 @@ export default function Admin() {
     try {
       if (activeTab === 'categories') {
         // Fetch both standard and super categories
-        const { data: stdCats } = await supabase.from('categories').select('*');
+        const { data: stdCats } = await supabase.from('categories').select('*').order('name');
         const { data: supCats } = await supabase.from('super_prompt_categories').select('*');
         
         // Normalize
         const formattedStd = (stdCats || []).map(c => ({ ...c, type: c.type || 'standard' }));
         const formattedSup = (supCats || []).map(c => ({ ...c, type: 'super' }));
         
-        setItems([...formattedStd, ...formattedSup]);
+        const allCats = [...formattedStd, ...formattedSup];
+        setItems(allCats);
+        
+        // Filter for parent dropdown (only standard/product types usually have subcategories in this context)
+        setAvailableParents(formattedStd.filter(c => !c.parent_id));
         
       } else if (activeTab === 'requests') {
         const { data } = await supabase
@@ -100,7 +110,7 @@ export default function Admin() {
     if (!confirm("Delete this item?")) return;
     
     let table = 'prompts';
-    if (activeTab === 'categories') table = 'categories'; // Simplified, might need check for super
+    if (activeTab === 'categories') table = 'categories'; 
     if (activeTab === 'requests') table = 'prompt_requests';
     if (activeTab === 'super_prompts') table = 'super_prompts';
 
@@ -136,7 +146,11 @@ export default function Admin() {
     if (!newItemName) return;
 
     let table = 'categories';
-    let payload: any = { name: newItemName, type: categoryType };
+    let payload: any = { 
+        name: newItemName, 
+        type: categoryType,
+        parent_id: (categoryType !== 'super' && selectedParentId) ? selectedParentId : null
+    };
 
     if (categoryType === 'super') {
         table = 'super_prompt_categories';
@@ -149,6 +163,7 @@ export default function Admin() {
     } else {
         toast.success("Category added");
         setNewItemName('');
+        setSelectedParentId('');
         fetchData();
     }
   };
@@ -287,24 +302,46 @@ export default function Admin() {
                         <div>
                             <div className="mb-8 p-6 bg-gray-50 dark:bg-black/50 rounded-2xl border border-gray-200 dark:border-gray-800">
                                 <h3 className="font-bold mb-4 text-lg">Add New Category</h3>
-                                <form onSubmit={handleAddCategory} className="flex flex-col md:flex-row gap-4">
-                                    <input 
-                                        value={newItemName}
-                                        onChange={e => setNewItemName(e.target.value)}
-                                        className="flex-1 p-3 rounded-xl border dark:bg-black dark:border-gray-700 dark:text-white"
-                                        placeholder="Category Name"
-                                    />
-                                    <select 
-                                        value={categoryType}
-                                        onChange={(e: any) => setCategoryType(e.target.value)}
-                                        className="p-3 rounded-xl border dark:bg-black dark:border-gray-700 dark:text-white"
-                                    >
-                                        <option value="standard">Standard</option>
-                                        <option value="product">Product</option>
-                                        <option value="super">Super</option>
-                                    </select>
-                                    <button className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90">
-                                        <Plus className="w-5 h-5" />
+                                <form onSubmit={handleAddCategory} className="flex flex-col gap-4">
+                                    <div className="flex flex-col md:flex-row gap-4">
+                                        <input 
+                                            value={newItemName}
+                                            onChange={e => setNewItemName(e.target.value)}
+                                            className="flex-1 p-3 rounded-xl border dark:bg-black dark:border-gray-700 dark:text-white"
+                                            placeholder="Category Name"
+                                        />
+                                        <select 
+                                            value={categoryType}
+                                            onChange={(e: any) => {
+                                                setCategoryType(e.target.value);
+                                                setSelectedParentId('');
+                                            }}
+                                            className="p-3 rounded-xl border dark:bg-black dark:border-gray-700 dark:text-white"
+                                        >
+                                            <option value="standard">Standard</option>
+                                            <option value="product">Product</option>
+                                            <option value="super">Super</option>
+                                        </select>
+                                    </div>
+                                    
+                                    {categoryType !== 'super' && (
+                                        <select 
+                                            value={selectedParentId}
+                                            onChange={(e) => setSelectedParentId(e.target.value)}
+                                            className="w-full p-3 rounded-xl border dark:bg-black dark:border-gray-700 dark:text-white"
+                                        >
+                                            <option value="">No Parent (Main Category)</option>
+                                            {availableParents
+                                                .filter(p => p.type === categoryType)
+                                                .map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                ))
+                                            }
+                                        </select>
+                                    )}
+
+                                    <button className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90 flex items-center justify-center gap-2">
+                                        <Plus className="w-5 h-5" /> Add Category
                                     </button>
                                 </form>
                             </div>
@@ -313,7 +350,10 @@ export default function Admin() {
                                 {filteredItems.map(item => (
                                     <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-black/30 rounded-xl border border-gray-100 dark:border-gray-800">
                                         <div>
-                                            <span className="font-bold block">{item.name}</span>
+                                            <span className="font-bold block flex items-center gap-2">
+                                                {item.parent_id && <ChevronRight className="w-4 h-4 text-gray-400" />}
+                                                {item.name}
+                                            </span>
                                             <span className="text-xs text-gray-500 uppercase">{item.type}</span>
                                         </div>
                                         <button onClick={() => handleDelete(item.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">

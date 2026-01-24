@@ -36,6 +36,7 @@ export interface Prompt {
   price_credits?: number;
   images: string[];
   image: string;
+  input_image?: string; // New field
   tags?: string[];
   author: string;
   creator_id?: string;
@@ -68,6 +69,7 @@ export interface SuperPrompt {
   prompt_content: string;
   how_to_use: string;
   example_output_images: string[];
+  example_input_images?: string[]; // New field
   is_premium: boolean;
   created_at: string;
   likes_count: number;
@@ -108,6 +110,14 @@ export interface UserProfile {
 }
 
 export type Category = 'All' | 'Couple' | 'Kids' | 'Men' | 'Women' | 'Animals' | 'Landscape';
+
+export interface CategoryItem {
+  id: string;
+  name: string;
+  type: string;
+  parent_id?: string | null;
+  subcategories?: CategoryItem[];
+}
 
 export interface PayoutRequest {
   id: string;

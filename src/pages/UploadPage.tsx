@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Image as ImageIcon, X, Loader2, Coins, Layers, Check, Box, Lock, Zap } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, Loader2, Coins, Layers, Check, Box, Lock, Zap, Video, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import imageCompression from 'browser-image-compression';
 import { useAuth } from '../context/AuthContext';
@@ -10,8 +10,15 @@ const UploadPage = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  
+  // Main Images
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  
+  // Input Images (Optional)
+  const [inputFiles, setInputFiles] = useState<File[]>([]);
+  const [inputPreviews, setInputPreviews] = useState<string[]>([]);
+
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [promptTexts, setPromptTexts] = useState<string[]>(['']);
@@ -57,9 +64,9 @@ const UploadPage = () => {
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, isInputImage = false) => {
     if (e.target.files && e.target.files.length > 0) {
-      await processFiles(Array.from(e.target.files));
+      await processFiles(Array.from(e.target.files), isInputImage);
     }
   };
 
@@ -73,17 +80,17 @@ const UploadPage = () => {
     setIsDragging(false);
   };
 
-  const handleDrop = async (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent, isInputImage = false) => {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        await processFiles(Array.from(e.dataTransfer.files));
+        await processFiles(Array.from(e.dataTransfer.files), isInputImage);
     }
   };
 
-  const processFiles = async (fileList: File[]) => {
+  const processFiles = async (fileList: File[], isInputImage: boolean) => {
     const compressionOptions = {
-        maxSizeMB: 0.05, // 50KB
+        maxSizeMB: 0.05, // 50KB - Aggressive compression for input reference images
         maxWidthOrHeight: 1024,
         useWebWorker: true,
         fileType: 'image/jpeg'
@@ -93,32 +100,49 @@ const UploadPage = () => {
     const newPreviews: string[] = [];
 
     for (const file of fileList) {
-        // Basic validation
         if (!file.type.startsWith('image/')) continue;
 
         try {
+            // Apply compression
             const compressed = await imageCompression(file, compressionOptions);
             newFiles.push(compressed);
             newPreviews.push(URL.createObjectURL(compressed));
         } catch (err) {
             console.warn("Compression failed for", file.name, err);
-            // Fallback to original if compression fails, but warn user
             newFiles.push(file);
             newPreviews.push(URL.createObjectURL(file));
         }
     }
     
-    setFiles(prev => [...prev, ...newFiles]);
-    setPreviews(prev => [...prev, ...newPreviews]);
+    if (isInputImage) {
+        if (promptType !== 'super') {
+            // Standard/Product: Only 1 input image allowed. Replace existing.
+            if (newFiles.length > 0) {
+                setInputFiles([newFiles[0]]);
+                setInputPreviews([newPreviews[0]]);
+            }
+        } else {
+            // Super Prompts: Allow multiple
+            setInputFiles(prev => [...prev, ...newFiles]);
+            setInputPreviews(prev => [...prev, ...newPreviews]);
+        }
+    } else {
+        setFiles(prev => [...prev, ...newFiles]);
+        setPreviews(prev => [...prev, ...newPreviews]);
+    }
   };
 
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
-    setPreviews(prev => prev.filter((_, i) => i !== index));
+  const removeFile = (index: number, isInputImage = false) => {
+    if (isInputImage) {
+        setInputFiles(prev => prev.filter((_, i) => i !== index));
+        setInputPreviews(prev => prev.filter((_, i) => i !== index));
+    } else {
+        setFiles(prev => prev.filter((_, i) => i !== index));
+        setPreviews(prev => prev.filter((_, i) => i !== index));
+    }
   };
 
   const toggleCategory = (category: string) => {
-    // For Super Prompts, allow only one category for simplicity now
     if (promptType === 'super') {
         setSelectedCategories([category]);
         return;
@@ -133,18 +157,25 @@ const UploadPage = () => {
     try {
         // Handle Super Prompt Upload
         if (promptType === 'super') {
-            // Logic to get category ID
             const { data: catData } = await supabase.from('super_prompt_categories').select('id').eq('name', selectedCategories[0]).single();
             if (!catData) throw new Error("Invalid Category");
 
-            // Upload images (already compressed in processFiles)
+            // Upload Output images
             const imageUrls: string[] = [];
-
             for (const file of files) {
                 const fileName = `super/${Date.now()}_${file.name}`;
                 await supabase.storage.from('prompt-images').upload(fileName, file);
                 const { data } = supabase.storage.from('prompt-images').getPublicUrl(fileName);
                 imageUrls.push(data.publicUrl);
+            }
+
+            // Upload Input images
+            const inputImageUrls: string[] = [];
+            for (const file of inputFiles) {
+                const fileName = `super/input_${Date.now()}_${file.name}`;
+                await supabase.storage.from('prompt-images').upload(fileName, file);
+                const { data } = supabase.storage.from('prompt-images').getPublicUrl(fileName);
+                inputImageUrls.push(data.publicUrl);
             }
 
             await supabase.from('super_prompts').insert({
@@ -154,6 +185,7 @@ const UploadPage = () => {
                 prompt_content: promptTexts[0],
                 how_to_use: superData.how_to_use,
                 example_output_images: imageUrls,
+                example_input_images: inputImageUrls,
                 created_by: user?.id,
                 is_premium: formData.is_paid
             });
@@ -172,6 +204,16 @@ const UploadPage = () => {
             mainImageUrl = data.publicUrl;
         }
 
+        // Upload Input Image (Single for standard/product)
+        let inputImageUrl = null;
+        if (inputFiles.length > 0) {
+            const file = inputFiles[0];
+            const fileName = `prompts/input_${Date.now()}_${file.name}`;
+            await supabase.storage.from('prompt-images').upload(fileName, file);
+            const { data } = supabase.storage.from('prompt-images').getPublicUrl(fileName);
+            inputImageUrl = data.publicUrl;
+        }
+
         const { data: prompt, error: promptError } = await supabase
         .from('prompts')
         .insert({
@@ -188,7 +230,8 @@ const UploadPage = () => {
           is_paid: formData.is_paid,
           is_bundle: files.length > 1,
           prompt_type: promptType,
-          image: mainImageUrl
+          image: mainImageUrl,
+          input_image: inputImageUrl
         })
         .select()
         .single();
@@ -270,6 +313,36 @@ const UploadPage = () => {
                 <textarea required value={promptTexts[0]} onChange={e => setPromptTexts([e.target.value])} className="w-full p-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 font-mono text-sm text-slate-900 dark:text-white" rows={6} />
             </div>
 
+            {/* Video Prompt (Product Only) */}
+            {promptType === 'product' && (
+                <div className="bg-amber-50 dark:bg-amber-900/10 p-5 rounded-2xl border border-amber-200 dark:border-amber-900/30">
+                    <div className="flex items-center gap-2 mb-3">
+                        <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-500">
+                            <Video className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-amber-900 dark:text-amber-100">
+                                Video Prompt (Optional)
+                            </label>
+                            <p className="text-xs text-amber-700 dark:text-amber-300 font-medium flex items-center gap-1">
+                                <Lock className="w-3 h-3" /> Premium Always - Users must unlock to view
+                            </p>
+                        </div>
+                    </div>
+                    <textarea 
+                        value={formData.video_prompt} 
+                        onChange={e => setFormData({...formData, video_prompt: e.target.value})} 
+                        className="w-full p-3 rounded-xl bg-white dark:bg-black border border-amber-200 dark:border-amber-800 font-mono text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none" 
+                        rows={4}
+                        placeholder="Enter the video generation prompt here..."
+                    />
+                    <div className="mt-2 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+                        <Zap className="w-3 h-3" />
+                        <span>Users unlocking this will use your affiliate link automatically.</span>
+                    </div>
+                </div>
+            )}
+
             {/* Categories */}
             <div>
                 <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">Categories</label>
@@ -282,9 +355,11 @@ const UploadPage = () => {
                 </div>
             </div>
 
-            {/* Images - Drag and Drop */}
+            {/* Main Images - Drag and Drop */}
             <div>
-                <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">Images (Auto-compressed to &lt;50KB)</label>
+                <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">
+                    {promptType === 'super' ? 'Example Output Images (Optional)' : 'Main Images'} (Auto-compressed)
+                </label>
                 <div className="grid grid-cols-4 gap-4">
                     {previews.map((src, i) => (
                         <div key={i} className="relative aspect-square rounded-lg overflow-hidden group">
@@ -301,13 +376,41 @@ const UploadPage = () => {
                         )}
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
-                        onDrop={handleDrop}
+                        onDrop={(e) => handleDrop(e, false)}
                     >
                         <Upload className={cn("w-6 h-6 mb-2", isDragging ? "text-blue-500" : "text-gray-400")} />
                         <span className={cn("text-xs font-bold", isDragging ? "text-blue-500" : "text-gray-400")}>
-                            {isDragging ? "Drop Here" : "Upload / Drag"}
+                            {isDragging ? "Drop Here" : "Upload"}
                         </span>
-                        <input type="file" hidden multiple accept="image/*" onChange={handleFileChange} />
+                        <input type="file" hidden multiple accept="image/*" onChange={(e) => handleFileChange(e, false)} />
+                    </label>
+                </div>
+            </div>
+
+            {/* Input Images (Optional) */}
+            <div>
+                <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4" /> 
+                    Input Image (Optional)
+                    <span className="text-xs font-normal text-gray-500">
+                        {promptType === 'super' ? 'Reference images' : 'Single reference image'} (Compressed &lt;50KB)
+                    </span>
+                </label>
+                <div className="grid grid-cols-4 gap-4">
+                    {inputPreviews.map((src, i) => (
+                        <div key={i} className="relative aspect-square rounded-lg overflow-hidden group">
+                            <img src={src} className="w-full h-full object-cover" />
+                            <button type="button" onClick={() => removeFile(i, true)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
+                        </div>
+                    ))}
+                    <label 
+                        className="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all"
+                        onDrop={(e) => handleDrop(e, true)}
+                        onDragOver={handleDragOver}
+                    >
+                        <Upload className="w-6 h-6 mb-2 text-gray-400" />
+                        <span className="text-xs font-bold text-gray-400">Upload Input</span>
+                        <input type="file" hidden multiple={promptType === 'super'} accept="image/*" onChange={(e) => handleFileChange(e, true)} />
                     </label>
                 </div>
             </div>

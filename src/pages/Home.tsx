@@ -223,11 +223,6 @@ export default function Home() {
         </div>
         
         {/* 3D Elements - Fixed for Mobile */}
-        <div className="absolute top-[15%] left-4 lg:left-10 animate-spin-slow opacity-80 z-20 scale-75 lg:scale-100">
-            <div className="w-16 h-16 lg:w-20 lg:h-20 bg-white dark:bg-black rounded-2xl shadow-2xl transform rotate-12 flex items-center justify-center text-black dark:text-white border-2 border-gray-200 dark:border-gray-800 backdrop-blur-md">
-                <Brain className="w-8 h-8 lg:w-10 lg:h-10" />
-            </div>
-        </div>
         <div className="absolute bottom-[15%] right-4 lg:right-10 animate-bounce opacity-80 z-20 scale-75 lg:scale-100">
             <div className="w-20 h-20 lg:w-24 lg:h-24 bg-white dark:bg-black rounded-full shadow-2xl flex items-center justify-center text-black dark:text-white border-2 border-gray-200 dark:border-gray-800 backdrop-blur-md">
                 <Lightbulb className="w-10 h-10 lg:w-12 lg:h-12" />
@@ -243,9 +238,9 @@ export default function Home() {
               </span>
             </div>
             
-            <h1 className="text-3xl sm:text-4xl md:text-7xl font-black tracking-tighter leading-[1.1] sm:leading-[1.1]">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-gray-600 to-gray-900 dark:from-white dark:via-gray-400 dark:to-white">
-                The Ultimate Freemium Prompt Marketplace & Library
+            <h1 className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter leading-[1.1] sm:leading-[1.1]">
+              <span className="text-black dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-white dark:via-gray-400 dark:to-white">
+                The Ultimate Freemium Prompt Marketplace
               </span>
             </h1>
             
@@ -255,7 +250,7 @@ export default function Home() {
 
             {/* Search */}
             <div ref={searchRef} className="max-w-md mx-auto relative z-50 pt-2">
-              <div className="relative group rounded-full transition-all duration-300 focus-within:ring-2 focus-within:ring-white focus-within:shadow-[0_0_20px_rgba(255,255,255,0.5)] bg-white dark:bg-gray-900 shadow-lg">
+              <div className="relative group rounded-full transition-all duration-300 focus-within:ring-2 focus-within:ring-black dark:focus-within:ring-white focus-within:shadow-[0_0_20px_rgba(0,0,0,0.3)] dark:focus-within:shadow-[0_0_20px_rgba(255,255,255,0.5)] bg-white dark:bg-gray-900 shadow-lg">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   {isSearching ? <Loader2 className="h-5 w-5 text-gray-400 animate-spin" /> : <Search className="h-5 w-5 text-gray-400" />}
                 </div>

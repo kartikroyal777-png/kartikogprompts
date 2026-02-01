@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Zap, ChevronRight, ArrowLeft, Copy, Check, Loader2, TrendingUp, BarChart, User, ShoppingBag, Percent, GraduationCap, PenTool, Briefcase, Megaphone, Lock, Heart, Info, Play, Star, Crown, Image as ImageIcon, Search } from 'lucide-react';
+import { Zap, ChevronRight, ArrowLeft, Copy, Check, Loader2, TrendingUp, BarChart, User, ShoppingBag, Percent, GraduationCap, PenTool, Briefcase, Megaphone, Lock, Heart, Info, Play, Star, Crown, Image as ImageIcon, Search, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SuperPromptCategory, SuperPrompt } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -25,15 +25,25 @@ const CATEGORY_ICONS: Record<string, any> = {
 export default function SuperPrompts() {
   const { user, isPro } = useAuth();
   const navigate = useNavigate();
+  
+  // Data States
   const [categories, setCategories] = useState<SuperPromptCategory[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<SuperPromptCategory | null>(null);
   const [prompts, setPrompts] = useState<SuperPrompt[]>([]);
+  
+  // Selection States
+  const [selectedCategory, setSelectedCategory] = useState<SuperPromptCategory | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<SuperPrompt | null>(null);
+  
+  // UI States
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   
-  // Filters
+  // Search States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [globalSearchResults, setGlobalSearchResults] = useState<SuperPrompt[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  
+  // Filters (Category View)
   const [showPremiumOnly, setShowPremiumOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'latest' | 'likes'>('latest');
 
@@ -45,10 +55,42 @@ export default function SuperPrompts() {
     fetchCategories();
   }, []);
 
+  // Global Search Effect
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery.trim().length >= 2 && !selectedCategory) {
+        performGlobalSearch();
+      } else if (searchQuery.trim().length === 0) {
+        setGlobalSearchResults([]);
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery, selectedCategory]);
+
   const fetchCategories = async () => {
     const { data } = await supabase.from('super_prompt_categories').select('*').order('sort_order');
     setCategories(data || []);
     setLoading(false);
+  };
+
+  const performGlobalSearch = async () => {
+    setIsSearching(true);
+    try {
+      const { data, error } = await supabase
+        .from('super_prompts')
+        .select('*')
+        .or(`title.ilike.%${searchQuery}%,what_it_does.ilike.%${searchQuery}%`)
+        .limit(20);
+      
+      if (error) throw error;
+      setGlobalSearchResults(data || []);
+    } catch (err) {
+      console.error("Search error:", err);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   useEffect(() => {
@@ -79,7 +121,8 @@ export default function SuperPrompts() {
   const handleCategoryClick = (category: SuperPromptCategory) => {
     setSelectedCategory(category);
     setSelectedPrompt(null);
-    setSearchQuery('');
+    setSearchQuery(''); // Clear global search when entering category
+    setGlobalSearchResults([]);
   };
 
   const handlePromptClick = (prompt: SuperPrompt) => {
@@ -104,11 +147,14 @@ export default function SuperPrompts() {
 
   const isLocked = selectedPrompt?.is_premium && !isPro;
 
-  // Filter prompts by search query
-  const filteredPrompts = prompts.filter(p => 
-    p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    p.what_it_does.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Determine what to display
+  const isGlobalSearchActive = !selectedCategory && searchQuery.length > 0;
+  const displayPrompts = isGlobalSearchActive ? globalSearchResults : prompts;
+
+  // Filter for Category View (Local filtering)
+  const filteredCategoryPrompts = selectedCategory 
+    ? prompts.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    : [];
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-black pt-24 pb-12 px-4 transition-colors duration-300">
@@ -123,13 +169,40 @@ export default function SuperPrompts() {
             <p className="text-slate-500">High-impact, specialized prompts for professionals.</p>
         </div>
 
+        {/* Global Search Bar (Visible when no specific prompt is selected) */}
+        {!selectedPrompt && (
+          <div className="mb-8 relative max-w-2xl">
+            <div className="relative">
+              <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+              <input 
+                type="text" 
+                placeholder={selectedCategory ? `Search in ${selectedCategory.name}...` : "Search all Mega Prompts..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-10 py-3 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white shadow-sm transition-all"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => { setSearchQuery(''); setGlobalSearchResults([]); }}
+                  className="absolute right-3 top-3 p-1 bg-gray-100 dark:bg-gray-800 rounded-full text-gray-500 hover:text-black dark:hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Breadcrumbs */}
         {selectedCategory && (
             <div className="flex items-center justify-between mb-6">
                 <button 
                     onClick={() => {
                         if (selectedPrompt) setSelectedPrompt(null);
-                        else setSelectedCategory(null);
+                        else {
+                          setSelectedCategory(null);
+                          setSearchQuery('');
+                        }
                     }}
                     className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-black dark:hover:text-white transition-colors"
                 >
@@ -145,8 +218,8 @@ export default function SuperPrompts() {
             </div>
         )}
 
-        {/* View 1: Categories Grid */}
-        {!loading && !selectedCategory && (
+        {/* View 1: Categories Grid (Default) */}
+        {!loading && !selectedCategory && !isGlobalSearchActive && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {categories.map(cat => {
                     const Icon = CATEGORY_ICONS[cat.name] || Zap;
@@ -167,55 +240,81 @@ export default function SuperPrompts() {
             </div>
         )}
 
-        {/* View 2: Prompts List */}
+        {/* View 2: Global Search Results */}
+        {!loading && !selectedCategory && isGlobalSearchActive && (
+           <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
+                {isSearching ? 'Searching...' : `Found ${globalSearchResults.length} results`}
+              </h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {globalSearchResults.map(prompt => (
+                      <div 
+                          key={prompt.id}
+                          onClick={() => handlePromptClick(prompt)}
+                          className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-black dark:hover:border-white cursor-pointer flex gap-4 group transition-all"
+                      >
+                          {prompt.thumbnail_image && (
+                              <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                  <img src={getImageUrl(prompt.thumbnail_image)} alt={prompt.title} className="w-full h-full object-cover" />
+                              </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                      <h3 className="font-bold text-slate-900 dark:text-white truncate">{prompt.title}</h3>
+                                      {prompt.is_premium && <Lock className="w-3 h-3 text-amber-500 flex-shrink-0" />}
+                                  </div>
+                              </div>
+                              <p className="text-sm text-slate-500 line-clamp-2">{prompt.what_it_does}</p>
+                          </div>
+                      </div>
+                  ))}
+                  {!isSearching && globalSearchResults.length === 0 && (
+                    <div className="col-span-full text-center py-12 text-slate-500">
+                      No prompts found matching "{searchQuery}"
+                    </div>
+                  )}
+              </div>
+           </div>
+        )}
+
+        {/* View 3: Category Prompts List */}
         {!loading && selectedCategory && !selectedPrompt && (
             <div>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedCategory.name} Prompts</h2>
                     
-                    {/* Search & Filters */}
-                    <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                            <input 
-                                type="text" 
-                                placeholder="Search prompts..." 
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 pr-4 py-2 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white w-full md:w-64"
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setShowPremiumOnly(!showPremiumOnly)}
-                                className={cn(
-                                    "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all border",
-                                    showPremiumOnly
-                                    ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
-                                    : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800"
-                                )}
-                            >
-                                {showPremiumOnly ? <Lock className="w-3 h-3 fill-current" /> : <Lock className="w-3 h-3" />}
-                                Premium
-                            </button>
-                            <button
-                                onClick={() => setSortBy(sortBy === 'likes' ? 'latest' : 'likes')}
-                                className={cn(
-                                    "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all border",
-                                    sortBy === 'likes'
-                                    ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
-                                    : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800"
-                                )}
-                            >
-                                <Heart className={cn("w-3 h-3", sortBy === 'likes' && "fill-current")} />
-                                Most Liked
-                            </button>
-                        </div>
+                    {/* Filters */}
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setShowPremiumOnly(!showPremiumOnly)}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all border",
+                                showPremiumOnly
+                                ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
+                                : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800"
+                            )}
+                        >
+                            {showPremiumOnly ? <Lock className="w-3 h-3 fill-current" /> : <Lock className="w-3 h-3" />}
+                            Premium
+                        </button>
+                        <button
+                            onClick={() => setSortBy(sortBy === 'likes' ? 'latest' : 'likes')}
+                            className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all border",
+                                sortBy === 'likes'
+                                ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
+                                : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800"
+                            )}
+                        >
+                            <Heart className={cn("w-3 h-3", sortBy === 'likes' && "fill-current")} />
+                            Most Liked
+                        </button>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {filteredPrompts.map(prompt => (
+                    {filteredCategoryPrompts.map(prompt => (
                         <div 
                             key={prompt.id}
                             onClick={() => handlePromptClick(prompt)}
@@ -245,19 +344,19 @@ export default function SuperPrompts() {
                             </div>
                         </div>
                     ))}
-                    {filteredPrompts.length === 0 && <p className="text-slate-500 italic col-span-full text-center py-10">No prompts found.</p>}
+                    {filteredCategoryPrompts.length === 0 && <p className="text-slate-500 italic col-span-full text-center py-10">No prompts found.</p>}
                 </div>
             </div>
         )}
 
-        {/* View 3: Prompt Detail */}
+        {/* View 4: Prompt Detail */}
         {!loading && selectedPrompt && (
             <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 p-8 shadow-xl">
                 <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8 border-b border-gray-100 dark:border-gray-800 pb-6">
                     <div>
                         <h1 className="text-3xl font-black mb-2 text-slate-900 dark:text-white leading-tight">{selectedPrompt.title}</h1>
                         <div className="flex items-center gap-2">
-                            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs font-bold text-slate-500">{selectedCategory?.name}</span>
+                            {selectedCategory && <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs font-bold text-slate-500">{selectedCategory.name}</span>}
                             {selectedPrompt.is_premium && <span className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-500 rounded text-xs font-bold flex items-center gap-1"><Lock className="w-3 h-3" /> Premium</span>}
                         </div>
                     </div>

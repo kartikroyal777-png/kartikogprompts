@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import imageCompression from 'browser-image-compression';
+import { compressImageSafe } from './compress';
 
 // Add delay helper
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -584,18 +584,10 @@ Return ONLY valid JSON. No explanations, no commentary, no markdown formatting.
 
 export async function generateJsonPrompt(file: File, isProduct: boolean = false): Promise<any> {
   // 1. Compress Image
-  const options = {
+  const compressedFile = await compressImageSafe(file, {
     maxSizeMB: 0.8,
     maxWidthOrHeight: 1024,
-    useWebWorker: false, // Fix: Disable WebWorker to prevent terminal crashes
-  };
-  
-  let compressedFile = file;
-  try {
-    compressedFile = await imageCompression(file, options);
-  } catch (e) {
-    console.warn("Compression failed", e);
-  }
+  });
 
   const base64Image = await fileToBase64(compressedFile);
   const systemPrompt = isProduct ? PRODUCT_PROMPT : GENERAL_PROMPT;

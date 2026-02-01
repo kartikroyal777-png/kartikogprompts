@@ -11,13 +11,19 @@ import PromptCard from '../components/PromptCard';
 import { getImageUrl } from '../lib/utils';
 import { useTheme } from '../context/ThemeContext';
 
-// Native image compression utility
+// Native image compression to avoid WebContainer/Worker issues with browser-image-compression
 const compressImage = async (file: File): Promise<File> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.src = URL.createObjectURL(file);
     img.onload = () => {
       const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+
       const MAX_WIDTH = 500;
       const MAX_HEIGHT = 500;
       let width = img.width;
@@ -34,18 +40,27 @@ const compressImage = async (file: File): Promise<File> => {
           height = MAX_HEIGHT;
         }
       }
+
       canvas.width = width;
       canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob((blob) => {
-          if (blob) resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
-          else reject(new Error('Compression failed'));
-        }, 'image/jpeg', 0.7);
-      } else reject(new Error('Canvas context failed'));
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            resolve(new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            }));
+          } else {
+            reject(new Error('Canvas to Blob failed'));
+          }
+        },
+        'image/jpeg',
+        0.7
+      );
     };
-    img.onerror = (err) => reject(err);
+    img.onerror = (error) => reject(error);
   });
 };
 
@@ -254,6 +269,7 @@ const Profile = () => {
     setUploadingAvatar(true);
 
     try {
+      // Use native compression instead of library
       const compressedFile = await compressImage(file);
       const fileExt = file.name.split('.').pop();
       const fileName = `avatars/${user.id}-${Date.now()}.${fileExt}`;

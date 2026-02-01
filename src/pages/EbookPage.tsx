@@ -9,14 +9,12 @@ import AuthModal from '../components/AuthModal';
 
 const EbookPage = () => {
   const { user, wallet, profile, refreshProfile } = useAuth();
-  const { theme } = useTheme();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   const EBOOK_PRICE = 20;
   const EBOOK_LINK = "https://www.canva.com/design/DAG6YzR_YAQ/YV_EEGgu0gcMyTXk0fTCfA/edit?utm_content=DAG6YzR_YAQ&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton";
-  // Direct link to the image provided
   const COVER_IMAGE = "https://lh3.googleusercontent.com/d/1m8rI80MB2hEuKdIk-N7KBb11m7INvj0m";
 
   const isUnlocked = profile?.ebook_access;
@@ -86,18 +84,6 @@ const EbookPage = () => {
     }
   ];
 
-  const testimonials = [
-    { name: "Rohit", role: "Freelancer", content: "Saved me ₹12,000 in the first month alone." },
-    { name: "Nishant", role: "Visual Creator", content: "The Dualite Alpha guide in this eBook is insane. I had no idea this tool could be accessed legally without paying for full access." },
-    { name: "Aditi", role: "Content Creator", content: "I created 40+ AI videos without subscriptions. Worth every rupee." },
-    { name: "Riya", role: "Aesthetic Editor", content: "The method in this eBook helped me use it completely free using official channels. Zero hacks, 100% safe." },
-    { name: "Abhay", role: "Short-Form Editor", content: "The vibe-coding examples are next level. I recreated the exact Dualite Alpha moods I see on TikTok." },
-    { name: "Varun", role: "Student", content: "The legal access methods here are better than any YouTube guide." },
-    { name: "Shreya", role: "Social Media Manager", content: "I use the workflows daily for client work. Pure gold." },
-    { name: "Divya", role: "Agency Owner", content: "The best investment I've made in 2025. Saves money and loads of time." },
-    { name: "Zoya", role: "Student Creator", content: "This book made AI content creation affordable for me. Zero monthly subscriptions now." }
-  ];
-
   const faqs = [
     { question: "Is this legal?", answer: "Yes, 100%. We only teach you how to use official free tiers, trials, research previews, and legal alternatives provided by the companies themselves." },
     { question: "Do I need a credit card?", answer: "For most methods, no. Some trials might require one, but we show you how to manage them safely." },
@@ -106,23 +92,22 @@ const EbookPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white pt-24 pb-12 transition-colors duration-300 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-black text-slate-900 dark:text-white pt-24 pb-12 transition-colors duration-300 relative overflow-hidden">
       
-      {/* Aesthetic Grid Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:linear-gradient(to_bottom,#000_60%,transparent_100%)] pointer-events-none z-0"></div>
+      {/* Monochrome Grid */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none z-0"></div>
 
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Hero Section */}
         <div className="flex flex-col md:flex-row items-center gap-12 mb-20">
-          {/* Cover Image */}
           <div className="w-full md:w-1/2 order-1 md:order-2">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9, rotate: -5 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6 }}
-              className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl shadow-sky-500/20 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+              className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
             >
               <img 
                 src={COVER_IMAGE} 
@@ -132,16 +117,15 @@ const EbookPage = () => {
             </motion.div>
           </div>
 
-          {/* Content */}
           <div className="w-full md:w-1/2 order-2 md:order-1 text-center md:text-left">
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-5xl font-black mb-6 text-slate-900 dark:text-white leading-tight"
+              className="text-4xl md:text-5xl font-black mb-6 text-black dark:text-white leading-tight"
             >
-              Stop Paying for <span className="text-sky-600 dark:text-sky-400">AI Subscriptions</span>
+              Stop Paying for <span className="text-gray-500">AI Subscriptions</span>
             </motion.h1>
-            <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 leading-relaxed">
+            <p className="text-xl text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
               Unlock Veo 3, Sora 2 Pro, Midjourney & more for FREE using legal, hidden workflows.
             </p>
             
@@ -149,37 +133,37 @@ const EbookPage = () => {
               {isUnlocked ? (
                 <button 
                   onClick={handlePurchase}
-                  className="bg-green-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-green-700 transition-all transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg shadow-green-500/25"
+                  className="bg-black dark:bg-white text-white dark:text-black px-8 py-4 rounded-full font-bold text-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg"
                 >
                   <ExternalLink className="w-5 h-5" />
-                  Access Ebook Content
+                  Access Content
                 </button>
               ) : (
                 <button 
                   onClick={handlePurchase}
                   disabled={loading}
-                  className="bg-sky-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-sky-700 transition-all transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg shadow-sky-500/25"
+                  className="bg-black dark:bg-white text-white dark:text-black px-8 py-4 rounded-full font-bold text-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg"
                 >
                   {loading ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <>
                       <Download className="w-5 h-5" />
-                      Get Access Now • 20 Credits
+                      Get Access • 20 Credits
                     </>
                   )}
                 </button>
               )}
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-4 font-medium">
+            <p className="text-xs text-gray-400 mt-4 font-bold uppercase tracking-wider">
               Instant Access • Lifetime Updates • 100% Legal
             </p>
           </div>
         </div>
 
-        {/* What's Inside Grid */}
+        {/* Features Grid */}
         <div className="mb-24">
-          <h2 className="text-3xl font-bold text-center mb-12 text-slate-900 dark:text-white">What's Inside?</h2>
+          <h2 className="text-3xl font-bold text-center mb-12 text-black dark:text-white">What's Inside?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {features.map((feature, index) => (
               <motion.div
@@ -188,88 +172,13 @@ const EbookPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-200 dark:border-slate-800 p-8 rounded-2xl hover:shadow-lg transition-all"
+                className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-8 rounded-2xl hover:border-black dark:hover:border-white transition-colors"
               >
-                <div className="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 rounded-xl flex items-center justify-center mb-6">
-                  <feature.icon className="w-6 h-6 text-sky-600 dark:text-sky-400" />
+                <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mb-6">
+                  <feature.icon className="w-6 h-6 text-black dark:text-white" />
                 </div>
-                <h3 className="text-xl font-bold mb-3 text-slate-900 dark:text-white">{feature.title}</h3>
-                <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{feature.description}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        {/* Massive ROI Section */}
-        <div className="mb-24 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-black dark:to-slate-900 rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/20 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
-          
-          <h2 className="text-3xl font-bold text-center mb-2 relative z-10">Massive ROI</h2>
-          <p className="text-center text-slate-400 mb-10 relative z-10">This eBook Saves You More Than ₹10,000 Instantly</p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center relative z-10">
-            <div className="space-y-4">
-              {[
-                { label: "Veo 3 subscription value", val: "₹3,500+" },
-                { label: "Sora-level video tools", val: "₹4,000+" },
-                { label: "Midjourney membership", val: "₹2,400+" },
-                { label: "Dualite Alpha Access Guide", val: "₹3,000+" },
-                { label: "Additional premium tools", val: "₹2,000+" },
-              ].map((item, i) => (
-                <div key={i} className="flex justify-between items-center border-b border-white/10 pb-3">
-                  <span className="text-slate-300">{item.label}</span>
-                  <span className="font-mono text-red-400 line-through decoration-red-500/50">{item.val}</span>
-                </div>
-              ))}
-              <div className="flex justify-between items-center pt-4">
-                <span className="font-bold text-lg text-white">Total Real Value</span>
-                <span className="font-mono font-bold text-2xl text-green-400">₹14,900+</span>
-              </div>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-8 text-center">
-              <div className="text-sm text-sky-300 font-bold mb-2 uppercase tracking-wider">Your Price Today</div>
-              <div className="text-6xl font-black text-white mb-2">20</div>
-              <div className="text-xl font-bold text-sky-300 mb-2">Credits</div>
-              <div className="text-slate-400 line-through text-lg mb-8">₹10,000</div>
-              
-              <button 
-                onClick={handlePurchase}
-                className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl hover:bg-sky-400 transition-colors mb-6 shadow-lg shadow-sky-500/20"
-              >
-                {isUnlocked ? "Access Content" : "Get Access Now"}
-              </button>
-              
-              <div className="flex justify-center gap-6 text-xs text-slate-300 font-medium">
-                <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-green-400" /> Instant Download</span>
-                <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-green-400" /> Lifetime Access</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Testimonials Masonry */}
-        <div className="mb-24">
-          <h2 className="text-3xl font-bold text-center mb-12 text-slate-900 dark:text-white">Trusted by 1,000+ Creators</h2>
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-            {testimonials.map((t, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm break-inside-avoid hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
-                    {t.name[0]}
-                  </div>
-                  <div>
-                    <div className="font-bold text-slate-900 dark:text-white">{t.name}</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">{t.role}</div>
-                  </div>
-                </div>
-                <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">"{t.content}"</p>
+                <h3 className="text-xl font-bold mb-3 text-black dark:text-white">{feature.title}</h3>
+                <p className="text-gray-600 dark:text-gray-400 leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
           </div>
@@ -277,23 +186,23 @@ const EbookPage = () => {
 
         {/* FAQ Section */}
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-10 text-slate-900 dark:text-white">Frequently Asked Questions</h2>
+          <h2 className="text-3xl font-bold text-center mb-10 text-black dark:text-white">FAQ</h2>
           <div className="space-y-4">
             {faqs.map((faq, index) => (
-              <div key={index} className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
+              <div key={index} className="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
                 <button
                   onClick={() => toggleFaq(index)}
-                  className="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  className="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
-                  <span className="font-bold text-slate-800 dark:text-slate-200">{faq.question}</span>
+                  <span className="font-bold text-black dark:text-white">{faq.question}</span>
                   {openFaqIndex === index ? (
-                    <ChevronUp className="w-5 h-5 text-sky-500" />
+                    <ChevronUp className="w-5 h-5 text-gray-400" />
                   ) : (
-                    <ChevronDown className="w-5 h-5 text-slate-400" />
+                    <ChevronDown className="w-5 h-5 text-gray-400" />
                   )}
                 </button>
                 {openFaqIndex === index && (
-                  <div className="px-6 py-4 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 leading-relaxed">
+                  <div className="px-6 py-4 text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 leading-relaxed">
                     {faq.answer}
                   </div>
                 )}

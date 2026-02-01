@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Zap, Wrench, ArrowRight, CheckCircle } from 'lucide-react';
+import { Sparkles, Zap, BookOpen, ArrowRight, CheckCircle, Camera } from 'lucide-react';
 
 interface WelcomeFlowProps {
   onComplete: () => void;
@@ -10,17 +10,17 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
   const [step, setStep] = useState<'splash' | 'onboarding'>('splash');
   const [currentSlide, setCurrentSlide] = useState(0);
   const LOGO_URL = "https://cdn.phototourl.com/uploads/2026-01-16-b1550510-f87e-4751-b08e-9d4421d7a041.jpg";
+  const GUIDE_COVER = "https://cdn.phototourl.com/uploads/2026-01-16-3c469bae-6e25-4d7a-a332-fdd7e876d267.jpg";
 
   useEffect(() => {
-    // FIX: Ensure callback is a simple synchronous wrapper
     const timer = setTimeout(() => {
-      const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding_v3');
+      const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding_v5'); // Incremented version
       if (hasSeenOnboarding) {
         onComplete();
       } else {
         setStep('onboarding');
       }
-    }, 2500);
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, [onComplete]);
@@ -29,32 +29,35 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
     if (currentSlide < slides.length - 1) {
       setCurrentSlide(prev => prev + 1);
     } else {
-      localStorage.setItem('hasSeenOnboarding_v3', 'true');
+      localStorage.setItem('hasSeenOnboarding_v5', 'true');
       onComplete();
     }
   };
 
   const slides = [
     {
-      icon: Sparkles,
-      title: "Ultimate Prompt Library",
-      desc: "Unlock the full potential of AI with our massive collection of curated prompts.",
-      color: "text-black dark:text-white",
-      bg: "bg-gray-100 dark:bg-gray-800"
+      type: 'standard',
+      icon: Camera,
+      title: "Photography Prompts",
+      desc: "Create stunning, cinematic visuals with our curated collection.",
     },
     {
+      type: 'standard',
       icon: Zap,
-      title: "Super Prompts",
-      desc: "Specialized, high-impact prompts for Finance, SEO, Business, and more.",
-      color: "text-black dark:text-white",
-      bg: "bg-gray-100 dark:bg-gray-800"
+      title: "Mega Prompts",
+      desc: "High-impact, specialized prompts for Finance, SEO, and Business.",
     },
     {
-      icon: Wrench,
-      title: "Prompt Enhancer",
-      desc: "Turn messy thoughts into perfect, engineered prompts with our AI Architect.",
-      color: "text-black dark:text-white",
-      bg: "bg-gray-100 dark:bg-gray-800"
+      type: 'image',
+      image: GUIDE_COVER,
+      title: "Prompt Engineering Guide",
+      desc: "Master the art of controlling AI with expert frameworks.",
+    },
+    {
+      type: 'standard',
+      icon: Sparkles,
+      title: "AI Enhancer Tools",
+      desc: "Turn messy thoughts into perfect prompts instantly.",
     }
   ];
 
@@ -66,14 +69,12 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white dark:bg-black"
       >
-        <div className="flex flex-col items-center justify-center gap-8">
+        <div className="flex flex-col items-center justify-center gap-6">
           <motion.div
-            animate={{ 
-              scale: [1, 1.1, 1],
-              rotate: [0, 180, 360] 
-            }}
-            transition={{ duration: 2, ease: "easeInOut", repeat: Infinity }}
-            className="w-20 h-20 rounded-2xl overflow-hidden shadow-2xl"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="w-28 h-28 rounded-3xl overflow-hidden shadow-2xl ring-1 ring-gray-100 dark:ring-gray-800"
           >
             <img 
               src={LOGO_URL} 
@@ -82,13 +83,13 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
             />
           </motion.div>
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.3, duration: 0.6 }}
             className="text-center"
           >
-            <h1 className="text-3xl font-black text-black dark:text-white tracking-tight">OG Prompts</h1>
-            <p className="text-gray-500 mt-2 font-medium">Unlock the full potential of AI Tools</p>
+            <h1 className="text-3xl font-black text-black dark:text-white tracking-tight mb-2">OG Prompts</h1>
+            <p className="text-gray-400 font-medium tracking-widest uppercase text-xs">The Ultimate Library</p>
           </motion.div>
         </div>
       </motion.div>
@@ -100,44 +101,57 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-white dark:bg-black flex flex-col"
+      className="fixed inset-0 z-[100] bg-white dark:bg-black flex flex-col overflow-hidden"
     >
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
-
-      <div className="flex-1 flex flex-col items-center justify-center px-6 relative z-10">
+      {/* Subtle Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:24px_24px]" />
+      
+      <div className="flex-1 flex flex-col items-center justify-center px-6 relative z-10 w-full max-w-md mx-auto">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide}
-            initial={{ opacity: 0, x: 50 }}
+            initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            transition={{ duration: 0.3 }}
-            className="text-center max-w-sm"
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="text-center w-full flex flex-col items-center"
           >
-            <div className={`w-24 h-24 mx-auto rounded-3xl ${slides[currentSlide].bg} flex items-center justify-center mb-8 shadow-xl`}>
-              {React.createElement(slides[currentSlide].icon, { 
-                className: `w-12 h-12 ${slides[currentSlide].color}` 
-              })}
-            </div>
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4">
+            {slides[currentSlide].type === 'image' ? (
+              <div className="relative w-40 h-56 mx-auto mb-10 shadow-2xl rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800">
+                <img 
+                  src={slides[currentSlide].image} 
+                  alt={slides[currentSlide].title} 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-24 h-24 mx-auto rounded-2xl bg-gray-50 dark:bg-gray-900 flex items-center justify-center mb-10 border border-gray-100 dark:border-gray-800">
+                {React.createElement(slides[currentSlide].icon!, { 
+                  className: "w-10 h-10 text-black dark:text-white" 
+                })}
+              </div>
+            )}
+            
+            <h2 className="text-2xl md:text-3xl font-bold text-black dark:text-white mb-4 leading-tight">
               {slides[currentSlide].title}
             </h2>
-            <p className="text-lg text-slate-500 dark:text-slate-400 leading-relaxed">
+            <p className="text-base text-gray-500 dark:text-gray-400 leading-relaxed font-medium max-w-xs mx-auto">
               {slides[currentSlide].desc}
             </p>
           </motion.div>
         </AnimatePresence>
       </div>
 
-      <div className="p-8 relative z-10">
+      <div className="p-8 relative z-10 w-full max-w-md mx-auto">
+        {/* Progress Indicators */}
         <div className="flex justify-center gap-2 mb-8">
           {slides.map((_, idx) => (
             <div 
               key={idx}
-              className={`h-2 rounded-full transition-all duration-300 ${
+              className={`h-1 rounded-full transition-all duration-300 ${
                 idx === currentSlide 
-                  ? 'w-8 bg-black dark:bg-white' 
-                  : 'w-2 bg-gray-200 dark:bg-gray-800'
+                  ? 'w-6 bg-black dark:bg-white' 
+                  : 'w-1.5 bg-gray-200 dark:bg-gray-800'
               }`}
             />
           ))}
@@ -145,12 +159,12 @@ const WelcomeFlow: React.FC<WelcomeFlowProps> = ({ onComplete }) => {
 
         <button
           onClick={handleNext}
-          className="w-full py-4 bg-black dark:bg-white text-white dark:text-black font-bold text-lg rounded-2xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+          className="w-full py-4 bg-black dark:bg-white text-white dark:text-black font-bold text-base rounded-xl hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
           {currentSlide === slides.length - 1 ? (
-            <>Get Started <CheckCircle className="w-5 h-5" /></>
+            <>Get Started <CheckCircle className="w-4 h-4" /></>
           ) : (
-            <>Next <ArrowRight className="w-5 h-5" /></>
+            <>Next <ArrowRight className="w-4 h-4" /></>
           )}
         </button>
       </div>

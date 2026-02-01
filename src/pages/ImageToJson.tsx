@@ -8,7 +8,7 @@ import AuthModal from '../components/AuthModal';
 import { Link } from 'react-router-dom';
 import DotGrid from '../components/DotGrid';
 import { useTheme } from '../context/ThemeContext';
-import imageCompression from 'browser-image-compression';
+import { compressImageSafe } from '../lib/compress';
 import { cn } from '../lib/utils';
 
 const ImageToJson = () => {
@@ -214,12 +214,10 @@ const ImageToJson = () => {
 
         // Upload image if present
         if (requestImage) {
-            const options = {
+            const compressedFile = await compressImageSafe(requestImage, {
                 maxSizeMB: 0.5,
                 maxWidthOrHeight: 1024,
-                useWebWorker: false, // FIX: Disabled WebWorker to prevent "t._onTimeout" errors
-            };
-            const compressedFile = await imageCompression(requestImage, options);
+            });
             const fileExt = compressedFile.type.split('/')[1] || 'jpg';
             const fileName = `requests/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
             

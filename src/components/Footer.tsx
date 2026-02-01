@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Instagram, Sparkles, Shield, Box, Zap, BookOpen } from 'lucide-react';
+import { Instagram, Sparkles, Shield, Zap, BookOpen } from 'lucide-react';
 
 const Footer = () => {
   const LOGO_URL = "https://cdn.phototourl.com/uploads/2026-01-16-b1550510-f87e-4751-b08e-9d4421d7a041.jpg";
@@ -38,9 +38,8 @@ const Footer = () => {
           <div>
             <h3 className="font-bold text-black dark:text-white mb-4">Features</h3>
             <ul className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
-              <li><Link to="/prompts" className="hover:text-black dark:hover:text-white transition-colors">Personality Prompts</Link></li>
-              <li><Link to="/product-prompts" className="hover:text-black dark:hover:text-white transition-colors flex items-center gap-1">Product Prompts <Box className="w-3 h-3" /></Link></li>
-              <li><Link to="/super-prompts" className="hover:text-black dark:hover:text-white transition-colors flex items-center gap-1">Super Prompts <Zap className="w-3 h-3" /></Link></li>
+              <li><Link to="/prompts" className="hover:text-black dark:hover:text-white transition-colors">Photography Prompts</Link></li>
+              <li><Link to="/mega-prompts" className="hover:text-black dark:hover:text-white transition-colors flex items-center gap-1">Mega Prompts <Zap className="w-3 h-3" /></Link></li>
               <li><Link to="/tools" className="hover:text-black dark:hover:text-white transition-colors flex items-center gap-1">Prompt Enhancer <Sparkles className="w-3 h-3" /></Link></li>
               <li><Link to="/tools" className="hover:text-black dark:hover:text-white transition-colors flex items-center gap-1">Guide Book <BookOpen className="w-3 h-3" /></Link></li>
             </ul>

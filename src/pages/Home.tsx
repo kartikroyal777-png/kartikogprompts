@@ -1,18 +1,14 @@
-import React, { useEffect, useState, Suspense, useMemo, useRef } from 'react';
-import { Search, Sparkles, ArrowRight, Clock, Box, Loader2, ChevronRight, Zap, Lightbulb, Brain, Check, Star, ShieldCheck, Crown, TrendingUp, BarChart, User, ShoppingBag, Percent, GraduationCap, PenTool, Briefcase, Megaphone } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Search, Sparkles, ArrowRight, Clock, Loader2, ChevronRight, Zap, Lightbulb, Check, Star, ShieldCheck, Crown, TrendingUp, BarChart, User, ShoppingBag, Percent, GraduationCap, PenTool, Briefcase, Megaphone } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import PromptCard from '../components/PromptCard';
 import { supabase } from '../lib/supabase';
 import { Prompt } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 import AuthModal from '../components/AuthModal';
 import { getImageUrl } from '../lib/utils';
 
-// Lazy load threads
-const Threads = React.lazy(() => import('../components/Threads'));
-
-// Icon Mapping for Super Prompts
+// Icon Mapping for Mega Prompts
 const CATEGORY_ICONS: Record<string, any> = {
   'Finance': TrendingUp,
   'SEO': BarChart,
@@ -52,7 +48,6 @@ const FAQS = [
 
 export default function Home() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [productPrompts, setProductPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSuper, setLoadingSuper] = useState(true);
   const [superPrompts, setSuperPrompts] = useState<any[]>([]);
@@ -63,14 +58,9 @@ export default function Home() {
   const searchRef = useRef<HTMLDivElement>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
-  const { user, profile } = useAuth();
-  const { theme } = useTheme();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-
-  const threadsColor = useMemo<[number, number, number]>(() => 
-    theme === 'dark' ? [1, 1, 1] : [0, 0, 0], 
-  [theme]);
 
   useEffect(() => {
     fetchAllPrompts();
@@ -130,22 +120,15 @@ export default function Home() {
   async function fetchAllPrompts() {
     setLoading(true);
     try {
-      const [standardRes, productRes] = await Promise.all([
-        supabase
+      const { data, error } = await supabase
           .from('prompts')
           .select(`*, prompt_images(storage_path, order_index)`)
           .eq('is_published', true)
           .eq('prompt_type', 'standard')
           .order('created_at', { ascending: false })
-          .limit(6),
-        supabase
-          .from('prompts')
-          .select(`*, prompt_images(storage_path, order_index)`)
-          .eq('is_published', true)
-          .eq('prompt_type', 'product')
-          .order('created_at', { ascending: false })
-          .limit(6)
-      ]);
+          .limit(6);
+
+      if (error) throw error;
 
       const formatPrompts = (data: any[]) => (data || []).map((p: any) => {
          const rawImages = p.prompt_images || p.images || [];
@@ -165,8 +148,7 @@ export default function Home() {
         };
       });
 
-      setPrompts(formatPrompts(standardRes.data || []));
-      setProductPrompts(formatPrompts(productRes.data || []));
+      setPrompts(formatPrompts(data || []));
     } catch (error) {
       console.error('Error fetching prompts:', error);
     } finally {
@@ -216,11 +198,6 @@ export default function Home() {
       {/* Hero Section */}
       <div className="relative overflow-hidden border-b border-gray-200 dark:border-gray-800">
         <div className="absolute inset-0 z-0 bg-grid-checks opacity-50 pointer-events-none" />
-        <div className="absolute inset-0 z-10 opacity-40 pointer-events-none">
-          <Suspense fallback={<div />}>
-            <Threads amplitude={1.5} distance={0} enableMouseInteraction={true} color={threadsColor} />
-          </Suspense>
-        </div>
         
         {/* 3D Elements - Fixed for Mobile */}
         <div className="absolute bottom-[15%] right-4 lg:right-10 animate-bounce opacity-80 z-20 scale-75 lg:scale-100">
@@ -240,7 +217,7 @@ export default function Home() {
             
             <h1 className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter leading-[1.1] sm:leading-[1.1]">
               <span className="text-black dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-white dark:via-gray-400 dark:to-white">
-                The Ultimate Freemium Prompt Marketplace
+                The Ultimate Freemium Prompt Library
               </span>
             </h1>
             
@@ -303,12 +280,12 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Personality Prompts (Standard) */}
+      {/* Photography Prompts (Standard) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-bold text-black dark:text-white flex items-center gap-2">
             <Clock className="w-6 h-6" />
-            Personality Prompts
+            Photography Prompts
           </h2>
           <Link to="/prompts" className="text-sm font-bold hover:underline">View All</Link>
         </div>
@@ -323,35 +300,15 @@ export default function Home() {
         )}
       </div>
 
-      {/* Product Prompts */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-b border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/20">
-        <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl font-bold text-black dark:text-white flex items-center gap-2">
-            <Box className="w-6 h-6" />
-            Product Prompts
-          </h2>
-          <Link to="/product-prompts" className="text-sm font-bold hover:underline">View All</Link>
-        </div>
-        {loading ? (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => <div key={i} className="aspect-[4/5] bg-gray-100 dark:bg-gray-900 rounded-2xl animate-pulse" />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            {productPrompts.map((prompt) => <PromptCard key={prompt.id} prompt={prompt} />)}
-          </div>
-        )}
-      </div>
-
-      {/* Super Prompts - Updated Styling */}
+      {/* Mega Prompts - Updated Styling */}
       <div className="bg-white dark:bg-black py-16 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4">
             <div className="flex items-center justify-between mb-8">
                 <h2 className="text-2xl font-bold text-black dark:text-white flex items-center gap-2">
                     <Zap className="w-6 h-6 text-white fill-black dark:fill-white" />
-                    Super Prompts
+                    Mega Prompts
                 </h2>
-                <Link to="/super-prompts" className="text-sm font-bold hover:underline">View All</Link>
+                <Link to="/mega-prompts" className="text-sm font-bold hover:underline">View All</Link>
             </div>
             
             {loadingSuper ? (
@@ -364,7 +321,7 @@ export default function Home() {
                         const Icon = CATEGORY_ICONS[prompt.category?.name] || Zap;
                         return (
                             <Link 
-                                to="/super-prompts" 
+                                to="/mega-prompts" 
                                 key={prompt.id} 
                                 className="bg-gray-50 dark:bg-gray-900 p-6 rounded-2xl border border-gray-200 dark:border-gray-800 hover:shadow-[0_0_15px_rgba(255,255,255,0.3)] dark:hover:shadow-[0_0_15px_rgba(255,255,255,0.15)] transition-all group"
                             >
@@ -396,7 +353,6 @@ export default function Home() {
                     { icon: Zap, title: "Enhancer Power", desc: "5 daily prompt enhancer trials to turn messy thoughts into gold." },
                     { icon: ShieldCheck, title: "Commercial Use", desc: "Use prompts for client work and products." },
                     { icon: Star, title: "Priority Requests", desc: "Request custom prompts from our team." },
-                    { icon: Box, title: "No Ads", desc: "Clean, focused experience without distractions." },
                     { icon: Check, title: "Lifetime Updates", desc: "Get all future prompts for free." }
                 ].map((item, i) => (
                     <div key={i} className="bg-white/5 p-6 rounded-2xl backdrop-blur-sm border border-white/10 hover:border-white/30 transition-colors">

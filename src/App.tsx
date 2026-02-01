@@ -16,7 +16,6 @@ import Profile from './pages/Profile';
 import Pricing from './pages/Pricing';
 import BecomeCreator from './pages/BecomeCreator';
 import CreatorProfile from './pages/CreatorProfile';
-import ProductPrompts from './pages/ProductPrompts';
 import Tools from './pages/Tools';
 import SuperPrompts from './pages/SuperPrompts';
 import { AuthProvider } from './context/AuthContext';
@@ -48,8 +47,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/prompts" element={<Prompts />} />
-                  <Route path="/product-prompts" element={<ProductPrompts />} />
-                  <Route path="/super-prompts" element={<SuperPrompts />} />
+                  <Route path="/mega-prompts" element={<SuperPrompts />} />
                   <Route path="/tools" element={<Tools />} />
                   <Route path="/prompt/:id" element={<PromptDetail />} />
                   <Route path="/upload" element={<UploadPage />} />
@@ -63,6 +61,8 @@ function App() {
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/become-creator" element={<BecomeCreator />} />
                   <Route path="/creator/:id" element={<CreatorProfile />} />
+                  {/* Redirect old routes */}
+                  <Route path="/super-prompts" element={<SuperPrompts />} />
                 </Routes>
               </div>
               <Footer />

@@ -25,6 +25,11 @@ export interface CreatorProfile {
   website?: string;
 }
 
+export interface BuyLookLink {
+  title: string;
+  url: string;
+}
+
 export interface Prompt {
   id: string;
   short_id?: number;
@@ -32,11 +37,11 @@ export interface Prompt {
   title: string;
   description: string;
   full_text?: string;
-  video_prompt?: string; // New
+  video_prompt?: string;
   price_credits?: number;
   images: string[];
   image: string;
-  input_image?: string; // New
+  input_image?: string;
   tags?: string[];
   author: string;
   creator_id?: string;
@@ -50,7 +55,8 @@ export interface Prompt {
   is_bundle?: boolean;
   monetization_url?: string;
   instagram_handle?: string;
-  outfit_link?: string; // New
+  outfit_link?: string; // Deprecated in favor of buy_look_links but kept for backward compatibility
+  buy_look_links?: BuyLookLink[]; // New
   prompt_type: 'standard' | 'product';
 }
 
@@ -70,7 +76,8 @@ export interface SuperPrompt {
   prompt_content: string;
   how_to_use: string;
   example_output_images: string[];
-  example_input_images?: string[]; // New
+  example_input_images?: string[];
+  thumbnail_image?: string; // New
   is_premium: boolean;
   created_at: string;
   likes_count: number;
@@ -116,8 +123,8 @@ export interface CategoryItem {
   id: string;
   name: string;
   type: string;
-  parent_id?: string | null; // New
-  subcategories?: CategoryItem[]; // For UI structure
+  parent_id?: string | null;
+  subcategories?: CategoryItem[];
 }
 
 export interface PayoutRequest {

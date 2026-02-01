@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Zap, ChevronRight, ArrowLeft, Copy, Check, Loader2, TrendingUp, BarChart, User, ShoppingBag, Percent, GraduationCap, PenTool, Briefcase, Megaphone, Lock, Heart, Info, Play, Star, Crown, Image as ImageIcon } from 'lucide-react';
+import { Zap, ChevronRight, ArrowLeft, Copy, Check, Loader2, TrendingUp, BarChart, User, ShoppingBag, Percent, GraduationCap, PenTool, Briefcase, Megaphone, Lock, Heart, Info, Play, Star, Crown, Image as ImageIcon, Search } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SuperPromptCategory, SuperPrompt } from '../types';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { getIsSuperLiked, toggleSuperLike } from '../lib/superLikes';
-import { cn } from '../lib/utils';
+import { cn, getImageUrl } from '../lib/utils';
 
 // Icon Mapping
 const CATEGORY_ICONS: Record<string, any> = {
@@ -31,6 +31,7 @@ export default function SuperPrompts() {
   const [selectedPrompt, setSelectedPrompt] = useState<SuperPrompt | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Filters
   const [showPremiumOnly, setShowPremiumOnly] = useState(false);
@@ -78,6 +79,7 @@ export default function SuperPrompts() {
   const handleCategoryClick = (category: SuperPromptCategory) => {
     setSelectedCategory(category);
     setSelectedPrompt(null);
+    setSearchQuery('');
   };
 
   const handlePromptClick = (prompt: SuperPrompt) => {
@@ -102,6 +104,12 @@ export default function SuperPrompts() {
 
   const isLocked = selectedPrompt?.is_premium && !isPro;
 
+  // Filter prompts by search query
+  const filteredPrompts = prompts.filter(p => 
+    p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    p.what_it_does.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-black pt-24 pb-12 px-4 transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
@@ -110,7 +118,7 @@ export default function SuperPrompts() {
         <div className="mb-8">
             <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Zap className="w-8 h-8 text-black dark:text-white fill-current" />
-                Super Prompts
+                Mega Prompts
             </h1>
             <p className="text-slate-500">High-impact, specialized prompts for professionals.</p>
         </div>
@@ -139,7 +147,7 @@ export default function SuperPrompts() {
 
         {/* View 1: Categories Grid */}
         {!loading && !selectedCategory && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {categories.map(cat => {
                     const Icon = CATEGORY_ICONS[cat.name] || Zap;
                     return (
@@ -165,58 +173,79 @@ export default function SuperPrompts() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedCategory.name} Prompts</h2>
                     
-                    {/* Filters */}
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setShowPremiumOnly(!showPremiumOnly)}
-                            className={cn(
-                                "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all border",
-                                showPremiumOnly
-                                ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
-                                : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800"
-                            )}
-                        >
-                            {showPremiumOnly ? <Lock className="w-3 h-3 fill-current" /> : <Lock className="w-3 h-3" />}
-                            Premium
-                        </button>
-                        <button
-                            onClick={() => setSortBy(sortBy === 'likes' ? 'latest' : 'likes')}
-                            className={cn(
-                                "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all border",
-                                sortBy === 'likes'
-                                ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
-                                : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800"
-                            )}
-                        >
-                            <Heart className={cn("w-3 h-3", sortBy === 'likes' && "fill-current")} />
-                            Most Liked
-                        </button>
+                    {/* Search & Filters */}
+                    <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                            <input 
+                                type="text" 
+                                placeholder="Search prompts..." 
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 pr-4 py-2 rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white w-full md:w-64"
+                            />
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setShowPremiumOnly(!showPremiumOnly)}
+                                className={cn(
+                                    "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all border",
+                                    showPremiumOnly
+                                    ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
+                                    : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800"
+                                )}
+                            >
+                                {showPremiumOnly ? <Lock className="w-3 h-3 fill-current" /> : <Lock className="w-3 h-3" />}
+                                Premium
+                            </button>
+                            <button
+                                onClick={() => setSortBy(sortBy === 'likes' ? 'latest' : 'likes')}
+                                className={cn(
+                                    "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all border",
+                                    sortBy === 'likes'
+                                    ? "bg-black text-white dark:bg-white dark:text-black border-transparent"
+                                    : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800"
+                                )}
+                            >
+                                <Heart className={cn("w-3 h-3", sortBy === 'likes' && "fill-current")} />
+                                Most Liked
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div className="grid gap-4">
-                    {prompts.map(prompt => (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {filteredPrompts.map(prompt => (
                         <div 
                             key={prompt.id}
                             onClick={() => handlePromptClick(prompt)}
-                            className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-black dark:hover:border-white cursor-pointer flex items-center justify-between group transition-all"
+                            className="bg-white dark:bg-gray-900 p-5 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-black dark:hover:border-white cursor-pointer flex gap-4 group transition-all"
                         >
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="font-bold text-slate-900 dark:text-white">{prompt.title}</h3>
-                                    {prompt.is_premium && <Lock className="w-3 h-3 text-amber-500" />}
+                            {/* Thumbnail Poster */}
+                            {prompt.thumbnail_image && (
+                                <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                    <img src={getImageUrl(prompt.thumbnail_image)} alt={prompt.title} className="w-full h-full object-cover" />
                                 </div>
-                                <p className="text-sm text-slate-500 line-clamp-1">{prompt.what_it_does}</p>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-1 text-xs text-slate-400">
-                                    <Heart className="w-3 h-3" /> {prompt.likes_count || 0}
+                            )}
+
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <h3 className="font-bold text-slate-900 dark:text-white truncate">{prompt.title}</h3>
+                                        {prompt.is_premium && <Lock className="w-3 h-3 text-amber-500 flex-shrink-0" />}
+                                    </div>
+                                    <div className="flex items-center gap-4 flex-shrink-0">
+                                        <div className="flex items-center gap-1 text-xs text-slate-400">
+                                            <Heart className="w-3 h-3" /> {prompt.likes_count || 0}
+                                        </div>
+                                        <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-black dark:group-hover:text-white" />
+                                    </div>
                                 </div>
-                                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-black dark:group-hover:text-white" />
+                                <p className="text-sm text-slate-500 line-clamp-2">{prompt.what_it_does}</p>
                             </div>
                         </div>
                     ))}
-                    {prompts.length === 0 && <p className="text-slate-500 italic">No prompts in this category yet.</p>}
+                    {filteredPrompts.length === 0 && <p className="text-slate-500 italic col-span-full text-center py-10">No prompts found.</p>}
                 </div>
             </div>
         )}

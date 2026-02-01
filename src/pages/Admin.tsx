@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Lock, Search, Trash2, Plus, Box, Image as ImageIcon, MessageSquare, ExternalLink, Check, X, Filter, Mail, Clock, Send, Zap, ChevronRight } from 'lucide-react';
+import { Shield, Search, Trash2, Plus, Image as ImageIcon, MessageSquare, ExternalLink, Check, X, Filter, Mail, Clock, Send, Zap, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getImageUrl } from '../lib/utils';
 import toast from 'react-hot-toast';
@@ -10,7 +10,7 @@ const ADMIN_PASSWORD = 'KARTIK#1234567';
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'prompts' | 'product_prompts' | 'super_prompts' | 'categories' | 'requests'>('prompts');
+  const [activeTab, setActiveTab] = useState<'prompts' | 'mega_prompts' | 'categories' | 'requests'>('prompts');
   
   // Data States
   const [items, setItems] = useState<any[]>([]);
@@ -18,7 +18,7 @@ export default function Admin() {
   
   // Category Management
   const [newItemName, setNewItemName] = useState('');
-  const [categoryType, setCategoryType] = useState<'standard' | 'product' | 'super'>('standard');
+  const [categoryType, setCategoryType] = useState<'standard' | 'super'>('standard');
   const [selectedParentId, setSelectedParentId] = useState<string>('');
   const [availableParents, setAvailableParents] = useState<CategoryItem[]>([]);
 
@@ -65,8 +65,7 @@ export default function Admin() {
         const allCats = [...formattedStd, ...formattedSup];
         setItems(allCats);
         
-        // Filter for parent dropdown (only standard/product types usually have subcategories in this context)
-        // Only allow categories that DON'T have a parent to be parents (1 level deep for simplicity)
+        // Filter for parent dropdown (only standard types usually have subcategories in this context)
         setAvailableParents(formattedStd.filter(c => !c.parent_id));
         
       } else if (activeTab === 'requests') {
@@ -76,12 +75,12 @@ export default function Admin() {
             .order('created_at', { ascending: false });
         setItems(data || []);
         fetchStats();
-      } else if (activeTab === 'super_prompts') {
+      } else if (activeTab === 'mega_prompts') {
         const { data } = await supabase.from('super_prompts').select('*').order('created_at', { ascending: false });
         setItems(data || []);
       } else {
-        const type = activeTab === 'product_prompts' ? 'product' : 'standard';
-        let query = supabase.from('prompts').select('*').eq('prompt_type', type).order('created_at', { ascending: false });
+        // Standard Prompts
+        let query = supabase.from('prompts').select('*').eq('prompt_type', 'standard').order('created_at', { ascending: false });
         
         if (searchQuery) {
             query = query.limit(100); 
@@ -113,7 +112,7 @@ export default function Admin() {
     let table = 'prompts';
     if (activeTab === 'categories') table = 'categories'; 
     if (activeTab === 'requests') table = 'prompt_requests';
-    if (activeTab === 'super_prompts') table = 'super_prompts';
+    if (activeTab === 'mega_prompts') table = 'super_prompts';
 
     // Special handling for categories deletion
     if (activeTab === 'categories') {
@@ -230,8 +229,7 @@ export default function Admin() {
         <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
             {[
                 { id: 'prompts', label: 'Standard', icon: ImageIcon },
-                { id: 'product_prompts', label: 'Product', icon: Box },
-                { id: 'super_prompts', label: 'Super', icon: Zap },
+                { id: 'mega_prompts', label: 'Mega Prompts', icon: Zap },
                 { id: 'requests', label: 'Requests', icon: MessageSquare, count: pendingCount },
                 { id: 'categories', label: 'Categories', icon: Filter },
             ].map((tab) => (
@@ -320,8 +318,7 @@ export default function Admin() {
                                             className="p-3 rounded-xl border dark:bg-black dark:border-gray-700 dark:text-white"
                                         >
                                             <option value="standard">Standard</option>
-                                            <option value="product">Product</option>
-                                            <option value="super">Super</option>
+                                            <option value="super">Mega Prompt</option>
                                         </select>
                                     </div>
                                     
@@ -443,15 +440,15 @@ export default function Admin() {
                         </div>
                     )}
 
-                    {/* Prompts View (Standard, Product, Super) */}
-                    {(activeTab === 'prompts' || activeTab === 'product_prompts' || activeTab === 'super_prompts') && (
+                    {/* Prompts View (Standard, Mega) */}
+                    {(activeTab === 'prompts' || activeTab === 'mega_prompts') && (
                         <div className="space-y-2">
                             {filteredItems.map(item => (
                                 <div key={item.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-black/30 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 transition-all">
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 rounded-lg bg-gray-200 dark:bg-gray-800 overflow-hidden flex-shrink-0">
                                             {item.image && <img src={getImageUrl(item.image)} alt="" className="w-full h-full object-cover" />}
-                                            {!item.image && activeTab === 'super_prompts' && <div className="flex items-center justify-center h-full"><Zap className="w-6 h-6 text-gray-400" /></div>}
+                                            {!item.image && activeTab === 'mega_prompts' && <div className="flex items-center justify-center h-full"><Zap className="w-6 h-6 text-gray-400" /></div>}
                                         </div>
                                         <div>
                                             <div className="font-bold text-gray-900 dark:text-white">{item.title}</div>
@@ -472,7 +469,7 @@ export default function Admin() {
 
                     {filteredItems.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                            <Box className="w-12 h-12 mb-4 opacity-20" />
+                            <ImageIcon className="w-12 h-12 mb-4 opacity-20" />
                             <p>No items found.</p>
                         </div>
                     )}

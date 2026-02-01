@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Image as ImageIcon, X, Loader2, Coins, Layers, Check, Box, Lock, Zap, Video, AlertCircle, Shirt } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, Loader2, Lock, Zap, Shirt, Plus, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import imageCompression from 'browser-image-compression';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
+import { BuyLookLink } from '../types';
 
 const UploadPage = () => {
   const { user, profile } = useAuth();
@@ -19,10 +20,14 @@ const UploadPage = () => {
   const [inputFiles, setInputFiles] = useState<File[]>([]);
   const [inputPreviews, setInputPreviews] = useState<string[]>([]);
 
+  // Mega Prompt Thumbnail (Optional)
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [promptTexts, setPromptTexts] = useState<string[]>(['']);
-  const [promptType, setPromptType] = useState<'standard' | 'product' | 'super'>('standard');
+  const [promptType, setPromptType] = useState<'standard' | 'super'>('standard');
   
   // Drag states
   const [isDraggingMain, setIsDraggingMain] = useState(false);
@@ -34,12 +39,13 @@ const UploadPage = () => {
     how_to_use: ''
   });
 
+  // Buy This Look Links
+  const [buyLinks, setBuyLinks] = useState<BuyLookLink[]>([{ title: '', url: '' }]);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '', 
-    video_prompt: '',
     monetization_url: '',
-    outfit_link: '',
     credit_name: '',
     instagram_handle: '',
     is_paid: false,
@@ -61,7 +67,7 @@ const UploadPage = () => {
           if (data) setCategories(data.map(c => c.name)); 
       } else {
           // Fetch main categories only (no parents)
-          const { data } = await supabase.from('categories').select('name').eq('type', promptType).is('parent_id', null);
+          const { data } = await supabase.from('categories').select('name').eq('type', 'standard').is('parent_id', null);
           if (data) setCategories(data.map(c => c.name));
       }
     } catch (err) {
@@ -73,6 +79,14 @@ const UploadPage = () => {
     if (e.target.files && e.target.files.length > 0) {
       await processFiles(Array.from(e.target.files), isInputImage);
     }
+  };
+
+  const handleThumbnailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          setThumbnailFile(file);
+          setThumbnailPreview(URL.createObjectURL(file));
+      }
   };
 
   const handleDragOver = (e: React.DragEvent, isInputImage: boolean) => {
@@ -102,7 +116,7 @@ const UploadPage = () => {
     const compressionOptions = {
         maxSizeMB: 0.15, 
         maxWidthOrHeight: 1280, 
-        useWebWorker: true,
+        useWebWorker: false, // FIX: Disabled WebWorker to prevent "t._onTimeout" errors
         fileType: 'image/jpeg',
         initialQuality: 0.7 
     };
@@ -127,7 +141,7 @@ const UploadPage = () => {
     
     if (isInputImage) {
         if (promptType !== 'super') {
-            // Standard/Product: Only 1 input image allowed. Replace existing.
+            // Standard: Only 1 input image allowed. Replace existing.
             if (newFiles.length > 0) {
                 setInputFiles([newFiles[0]]);
                 setInputPreviews([newPreviews[0]]);
@@ -161,6 +175,15 @@ const UploadPage = () => {
     setSelectedCategories(prev => prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]);
   };
 
+  // Link Management
+  const addLink = () => setBuyLinks([...buyLinks, { title: '', url: '' }]);
+  const removeLink = (index: number) => setBuyLinks(buyLinks.filter((_, i) => i !== index));
+  const updateLink = (index: number, field: keyof BuyLookLink, value: string) => {
+      const newLinks = [...buyLinks];
+      newLinks[index][field] = value;
+      setBuyLinks(newLinks);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -189,6 +212,15 @@ const UploadPage = () => {
                 inputImageUrls.push(data.publicUrl);
             }
 
+            // Upload Thumbnail
+            let thumbnailUrl = null;
+            if (thumbnailFile) {
+                const fileName = `super/thumb_${Date.now()}_${thumbnailFile.name}`;
+                await supabase.storage.from('prompt-images').upload(fileName, thumbnailFile);
+                const { data } = supabase.storage.from('prompt-images').getPublicUrl(fileName);
+                thumbnailUrl = data.publicUrl;
+            }
+
             await supabase.from('super_prompts').insert({
                 title: formData.title,
                 category_id: catData.id,
@@ -197,14 +229,15 @@ const UploadPage = () => {
                 how_to_use: superData.how_to_use,
                 example_output_images: imageUrls,
                 example_input_images: inputImageUrls,
+                thumbnail_image: thumbnailUrl,
                 created_by: user?.id,
                 is_premium: formData.is_paid
             });
-            navigate('/super-prompts');
+            navigate('/mega-prompts');
             return;
         }
 
-        // Standard/Product Logic
+        // Standard Logic
         // Upload main image
         let mainImageUrl = null;
         if (files.length > 0) {
@@ -215,7 +248,7 @@ const UploadPage = () => {
             mainImageUrl = data.publicUrl;
         }
 
-        // Upload Input Image (Single for standard/product)
+        // Upload Input Image (Single for standard)
         let inputImageUrl = null;
         if (inputFiles.length > 0) {
             const file = inputFiles[0];
@@ -225,23 +258,25 @@ const UploadPage = () => {
             inputImageUrl = data.publicUrl;
         }
 
+        // Filter empty links
+        const validLinks = buyLinks.filter(l => l.title.trim() && l.url.trim());
+
         const { data: prompt, error: promptError } = await supabase
         .from('prompts')
         .insert({
           title: formData.title,
           description: formData.description || promptTexts[0],
-          video_prompt: formData.video_prompt,
           category: selectedCategories[0],
           categories: selectedCategories,
           monetization_url: formData.monetization_url,
-          outfit_link: formData.outfit_link, 
+          buy_look_links: validLinks, 
           credit_name: formData.credit_name || profile?.display_name,
           instagram_handle: formData.instagram_handle,
           is_published: true,
           creator_id: user?.id,
           is_paid: formData.is_paid,
           is_bundle: files.length > 1,
-          prompt_type: promptType,
+          prompt_type: 'standard',
           image: mainImageUrl,
           input_image: inputImageUrl
         })
@@ -287,13 +322,13 @@ const UploadPage = () => {
         
         {/* Type Switcher */}
         <div className="flex bg-gray-100 dark:bg-black p-1 rounded-xl mb-8">
-            {['standard', 'product', 'super'].map(t => (
+            {['standard', 'super'].map(t => (
                 <button 
                     key={t}
                     onClick={() => { setPromptType(t as any); setSelectedCategories([]); }}
                     className={`flex-1 py-3 rounded-lg font-bold text-sm capitalize transition-all ${promptType === t ? 'bg-white dark:bg-gray-800 shadow-sm text-black dark:text-white' : 'text-gray-500'}`}
                 >
-                    {t}
+                    {t === 'super' ? 'Mega Prompt' : 'Photography Prompt'}
                 </button>
             ))}
         </div>
@@ -319,20 +354,48 @@ const UploadPage = () => {
                 </>
             )}
 
-            {/* Outfit Link (Standard Only) */}
+            {/* Buy This Look (Standard Only) */}
             {promptType === 'standard' && (
-                <div>
-                    <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white flex items-center gap-2">
-                        <Shirt className="w-4 h-4" /> Outfit Link (Optional)
+                <div className="bg-slate-50 dark:bg-black/50 p-4 rounded-xl border border-slate-200 dark:border-gray-800">
+                    <label className="block text-sm font-bold mb-3 text-slate-900 dark:text-white flex items-center gap-2">
+                        <Shirt className="w-4 h-4" /> Buy This Look
                     </label>
-                    <input 
-                        type="url" 
-                        placeholder="https://..." 
-                        value={formData.outfit_link} 
-                        onChange={e => setFormData({...formData, outfit_link: e.target.value})} 
-                        className="w-full p-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Link to the outfit shown in the prompt image.</p>
+                    <div className="space-y-3">
+                        {buyLinks.map((link, index) => (
+                            <div key={index} className="flex gap-2 items-start">
+                                <div className="flex-1 space-y-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Item Title (e.g. Jacket)" 
+                                        value={link.title} 
+                                        onChange={e => updateLink(index, 'title', e.target.value)} 
+                                        className="w-full p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm" 
+                                    />
+                                    <input 
+                                        type="url" 
+                                        placeholder="https://shop.com/item" 
+                                        value={link.url} 
+                                        onChange={e => updateLink(index, 'url', e.target.value)} 
+                                        className="w-full p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm" 
+                                    />
+                                </div>
+                                <button 
+                                    type="button" 
+                                    onClick={() => removeLink(index)} 
+                                    className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg mt-1"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                        <button 
+                            type="button" 
+                            onClick={addLink} 
+                            className="text-sm font-bold text-blue-500 hover:underline flex items-center gap-1"
+                        >
+                            <Plus className="w-3 h-3" /> Add Item
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -341,36 +404,6 @@ const UploadPage = () => {
                 <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white">Prompt Content</label>
                 <textarea required value={promptTexts[0]} onChange={e => setPromptTexts([e.target.value])} className="w-full p-3 rounded-xl bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-800 font-mono text-sm text-slate-900 dark:text-white" rows={6} />
             </div>
-
-            {/* Video Prompt (Product Only) */}
-            {promptType === 'product' && (
-                <div className="bg-amber-50 dark:bg-amber-900/10 p-5 rounded-2xl border border-amber-200 dark:border-amber-900/30">
-                    <div className="flex items-center gap-2 mb-3">
-                        <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-amber-600 dark:text-amber-500">
-                            <Video className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-amber-900 dark:text-amber-100">
-                                Video Prompt (Optional)
-                            </label>
-                            <p className="text-xs text-amber-700 dark:text-amber-300 font-medium flex items-center gap-1">
-                                <Lock className="w-3 h-3" /> Premium Always - Users must unlock to view
-                            </p>
-                        </div>
-                    </div>
-                    <textarea 
-                        value={formData.video_prompt} 
-                        onChange={e => setFormData({...formData, video_prompt: e.target.value})} 
-                        className="w-full p-3 rounded-xl bg-white dark:bg-black border border-amber-200 dark:border-amber-800 font-mono text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none" 
-                        rows={4}
-                        placeholder="Enter the video generation prompt here..."
-                    />
-                    <div className="mt-2 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
-                        <Zap className="w-3 h-3" />
-                        <span>Users unlocking this will use your affiliate link automatically.</span>
-                    </div>
-                </div>
-            )}
 
             {/* Categories */}
             <div>
@@ -451,6 +484,33 @@ const UploadPage = () => {
                     </label>
                 </div>
             </div>
+
+            {/* Mega Prompt Thumbnail (Optional) */}
+            {promptType === 'super' && (
+                <div>
+                    <label className="block text-sm font-bold mb-2 text-slate-900 dark:text-white flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4" /> 
+                        Thumbnail Poster (Optional)
+                        <span className="text-xs font-normal text-gray-500">
+                            For display in list view
+                        </span>
+                    </label>
+                    <div className="grid grid-cols-4 gap-4">
+                        {thumbnailPreview ? (
+                            <div className="relative aspect-square rounded-lg overflow-hidden group">
+                                <img src={thumbnailPreview} className="w-full h-full object-cover" />
+                                <button type="button" onClick={() => { setThumbnailFile(null); setThumbnailPreview(null); }} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
+                            </div>
+                        ) : (
+                            <label className="aspect-square border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                                <Upload className="w-6 h-6 text-gray-400 mb-2" />
+                                <span className="text-xs font-bold text-gray-400">Upload</span>
+                                <input type="file" hidden accept="image/*" onChange={handleThumbnailChange} />
+                            </label>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Premium Toggle */}
             <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-black rounded-xl border border-gray-200 dark:border-gray-800">

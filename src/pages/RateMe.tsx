@@ -59,7 +59,7 @@ export default function RateMe() {
       const options = {
         maxSizeMB: 0.8,
         maxWidthOrHeight: 1024,
-        useWebWorker: true,
+        useWebWorker: false, // FIX: Disabled WebWorker to prevent "t._onTimeout" errors
         fileType: 'image/jpeg'
       };
 
@@ -116,7 +116,7 @@ export default function RateMe() {
       const options = {
         maxSizeMB: 0.5, 
         maxWidthOrHeight: 800,
-        useWebWorker: true,
+        useWebWorker: false, // FIX: Disabled WebWorker to prevent "t._onTimeout" errors
       };
       const compressedFile = await imageCompression(file, options);
 
@@ -134,7 +134,6 @@ export default function RateMe() {
         .getPublicUrl(fileName);
 
       // 4. Save Entry to Database
-      // CRITICAL FIX: Do NOT include 'final_score' (generated column). Use 'ai_base_score'.
       const entryData = {
         user_id: freshUser.id,
         image_url: publicUrl,
@@ -197,7 +196,7 @@ export default function RateMe() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white pt-24 pb-24 px-4 overflow-x-hidden transition-colors duration-300">
       
-      {/* Background Animation - Updated Gap for Density */}
+      {/* Background Animation */}
       <div className="fixed inset-0 z-0 opacity-40 pointer-events-none">
         <DotGrid 
           baseColor={theme === 'dark' ? '#0ea5e9' : '#38bdf8'}

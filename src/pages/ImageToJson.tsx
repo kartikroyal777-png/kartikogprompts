@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Upload, Image as ImageIcon, Copy, Check, Loader2, Sparkles, AlertCircle, Zap, Send, Mail, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Upload, Image as ImageIcon, Copy, Check, Loader2, Sparkles, Zap, Send, Mail } from 'lucide-react';
 import { generateJsonPrompt } from '../lib/imageAnalysis';
 import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import AuthModal from '../components/AuthModal';
@@ -10,6 +9,7 @@ import { Link } from 'react-router-dom';
 import DotGrid from '../components/DotGrid';
 import { useTheme } from '../context/ThemeContext';
 import imageCompression from 'browser-image-compression';
+import { cn } from '../lib/utils';
 
 const ImageToJson = () => {
   const { user, wallet, refreshProfile } = useAuth();
@@ -19,7 +19,6 @@ const ImageToJson = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [copied, setCopied] = useState(false);
-  const [promptType, setPromptType] = useState<'standard' | 'product'>('standard');
   
   // Credit & Trial System
   const [freeTrialsLeft, setFreeTrialsLeft] = useState(3);
@@ -91,7 +90,8 @@ const ImageToJson = () => {
     
     setLoading(true);
     try {
-      const data = await generateJsonPrompt(file, promptType === 'product');
+      // Always standard mode now
+      const data = await generateJsonPrompt(file, false);
       setResult(data);
       toast.success("Analysis complete!");
     } catch (error: any) {
@@ -217,7 +217,7 @@ const ImageToJson = () => {
             const options = {
                 maxSizeMB: 0.5,
                 maxWidthOrHeight: 1024,
-                useWebWorker: false,
+                useWebWorker: false, // FIX: Disabled WebWorker to prevent "t._onTimeout" errors
             };
             const compressedFile = await imageCompression(requestImage, options);
             const fileExt = compressedFile.type.split('/')[1] || 'jpg';
@@ -313,30 +313,7 @@ const ImageToJson = () => {
           {/* Upload Section */}
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-900 rounded-3xl p-2 shadow-xl border border-gray-100 dark:border-gray-800">
-              {/* Type Toggle */}
-              <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-4">
-                <button
-                  onClick={() => setPromptType('standard')}
-                  className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-                    promptType === 'standard'
-                      ? 'bg-white dark:bg-black text-black dark:text-white shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                  }`}
-                >
-                  Standard
-                </button>
-                <button
-                  onClick={() => setPromptType('product')}
-                  className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-                    promptType === 'product'
-                      ? 'bg-white dark:bg-black text-black dark:text-white shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
-                  }`}
-                >
-                  Product Shot
-                </button>
-              </div>
-
+              
               <div
                 className={`relative border-2 border-dashed rounded-2xl transition-all h-[400px] flex flex-col items-center justify-center text-center p-8 ${
                   preview

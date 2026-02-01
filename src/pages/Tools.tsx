@@ -122,7 +122,8 @@ export default function Tools() {
     try {
         let imageUrl = null;
         if (requestImage) {
-            const options = { maxSizeMB: 0.05, maxWidthOrHeight: 800, useWebWorker: true }; // < 50KB compression
+            // FIX: Disable WebWorker to prevent runtime crash in WebContainer
+            const options = { maxSizeMB: 0.05, maxWidthOrHeight: 800, useWebWorker: false }; 
             const compressed = await imageCompression(requestImage, options);
             const fileName = `requests/${Date.now()}_${Math.random().toString(36).substring(7)}`;
             await supabase.storage.from('prompt-images').upload(fileName, compressed);
@@ -299,7 +300,7 @@ export default function Tools() {
                                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
                                         <Upload className={cn("w-8 h-8 mb-2", isDragging ? "text-blue-500" : "text-gray-400")} />
                                         <span className={cn("text-xs font-bold", isDragging ? "text-blue-500" : "text-gray-400")}>
-                                            {isDragging ? "Drop Here" : "Upload Reference"}
+                                            {isDragging ? "Drop Here" : "Upload"}
                                         </span>
                                     </div>
                                 )}

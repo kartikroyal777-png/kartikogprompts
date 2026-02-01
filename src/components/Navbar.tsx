@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, LogIn, User, Box, Zap, Crown } from 'lucide-react';
+import { Sun, Moon, LogIn, User, Zap, Crown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -17,8 +17,7 @@ const Navbar = () => {
 
   const navLinks = [
     { name: 'Prompts', path: '/prompts' },
-    { name: 'Super Prompts', path: '/super-prompts', icon: Zap },
-    { name: 'Product Prompts', path: '/product-prompts', icon: Box },
+    { name: 'Mega Prompts', path: '/mega-prompts', icon: Zap },
     { name: 'Tools', path: '/tools' },
   ];
 

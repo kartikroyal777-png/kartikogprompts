@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Box, LayoutGrid, Zap, Wrench, Crown } from 'lucide-react';
+import { Home, LayoutGrid, Zap, Wrench, Crown } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../context/AuthContext';
 
@@ -11,8 +11,7 @@ const BottomNav = () => {
   const navItems = [
     { icon: Home, label: 'Home', path: '/' },
     { icon: LayoutGrid, label: 'Prompts', path: '/prompts' },
-    { icon: Zap, label: 'Super', path: '/super-prompts' },
-    { icon: Box, label: 'Products', path: '/product-prompts' },
+    { icon: Zap, label: 'Mega', path: '/mega-prompts' },
     { icon: Wrench, label: 'Tools', path: '/tools' },
   ];
 

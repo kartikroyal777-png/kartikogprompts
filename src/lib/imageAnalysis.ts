@@ -9,7 +9,6 @@ const ENV_API_KEYS = import.meta.env.VITE_OPENROUTER_API_KEY;
 const DEFAULT_KEY = "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";
 
 // Updated: Prioritize valid and stable models
-// Removed 'google/gemini-2.0-pro-exp-02-05:free' as it causes 400 errors
 const MODELS = [
   "google/gemini-2.0-flash-exp:free",             // Primary
   "google/gemini-2.0-flash-thinking-exp:free",    // Backup 1 (High capability)

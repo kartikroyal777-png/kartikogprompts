@@ -12,6 +12,7 @@ const Prompts = () => {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showPremiumOnly, setShowPremiumOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'latest' | 'likes'>('latest');
   
@@ -67,6 +68,7 @@ const Prompts = () => {
 
   const fetchPrompts = async () => {
     setLoading(true);
+    setError(null);
     try {
       let query = supabase
         .from('prompts')
@@ -120,8 +122,13 @@ const Prompts = () => {
       });
 
       setPrompts(formattedPrompts);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching prompts:', error);
+      if (error.message === 'Failed to fetch' || error.message?.includes('Failed to fetch')) {
+        setError('Unable to connect to the database. The project might be paused or blocked by an ad-blocker.');
+      } else {
+        setError('An error occurred while loading prompts.');
+      }
     } finally {
       setLoading(false);
     }
@@ -261,6 +268,11 @@ const Prompts = () => {
               <div key={i} className="aspect-[4/5] bg-gray-100 dark:bg-gray-900 rounded-2xl animate-pulse border border-gray-200 dark:border-gray-800" />
             ))}
           </div>
+        ) : error ? (
+          <div className="p-8 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-3xl border border-red-200 dark:border-red-800 text-center max-w-2xl mx-auto">
+            <p className="font-bold text-lg mb-2">Connection Error</p>
+            <p>{error}</p>
+          </div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-6">
             {filteredPrompts.map((prompt) => (
@@ -269,7 +281,7 @@ const Prompts = () => {
           </div>
         )}
 
-        {!loading && filteredPrompts.length === 0 && (
+        {!loading && !error && filteredPrompts.length === 0 && (
           <div className="text-center py-20 bg-gray-50 dark:bg-gray-900/50 rounded-3xl border border-dashed border-gray-200 dark:border-gray-800">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
               <Sparkles className="w-8 h-8 text-gray-400" />

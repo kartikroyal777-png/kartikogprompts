@@ -49,6 +49,7 @@ const FAQS = [
 export default function Home() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [loadingSuper, setLoadingSuper] = useState(true);
   const [superPrompts, setSuperPrompts] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -102,8 +103,12 @@ export default function Home() {
               return { ...p, image: imageUrl };
             });
             setSearchResults(formatted);
-          } catch (error) {
-            console.error("Search error:", error);
+          } catch (error: any) {
+            if (error.message === 'Failed to fetch' || error.message?.includes('Failed to fetch')) {
+              console.warn("Search network error (likely ad-blocker or paused project):", error.message);
+            } else {
+              console.error("Search error:", error);
+            }
           } finally {
             setIsSearching(false);
           }
@@ -119,6 +124,7 @@ export default function Home() {
 
   async function fetchAllPrompts() {
     setLoading(true);
+    setError(null);
     try {
       const { data, error } = await supabase
           .from('prompts')
@@ -149,8 +155,14 @@ export default function Home() {
       });
 
       setPrompts(formatPrompts(data || []));
-    } catch (error) {
-      console.error('Error fetching prompts:', error);
+    } catch (error: any) {
+      if (error.message === 'Failed to fetch' || error.message?.includes('Failed to fetch')) {
+        console.warn('Network error fetching prompts (likely ad-blocker or paused project):', error.message);
+        setError('Unable to connect to the database. The project might be paused or blocked by an ad-blocker.');
+      } else {
+        console.error('Error fetching prompts:', error);
+        setError('An error occurred while loading prompts.');
+      }
     } finally {
       setLoading(false);
     }
@@ -172,8 +184,12 @@ export default function Home() {
             .limit(4)
             .order('created_at', { ascending: false });
           setSuperPrompts(data || []);
-      } catch (e) {
-          console.error(e);
+      } catch (e: any) {
+          if (e.message === 'Failed to fetch' || e.message?.includes('Failed to fetch')) {
+              console.warn("Super prompts network error (likely ad-blocker or paused project):", e.message);
+          } else {
+              console.error(e);
+          }
       } finally {
           setLoadingSuper(false);
       }
@@ -292,6 +308,11 @@ export default function Home() {
         {loading ? (
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(6)].map((_, i) => <div key={i} className="aspect-[4/5] bg-gray-100 dark:bg-gray-900 rounded-2xl animate-pulse" />)}
+          </div>
+        ) : error ? (
+          <div className="p-6 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-2xl border border-red-200 dark:border-red-800 text-center">
+            <p className="font-bold mb-2">Connection Error</p>
+            <p className="text-sm">{error}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
